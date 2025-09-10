@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: callform-db
+    environment:
+      POSTGRES_DB: callform
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - callform-network
+
+  # Spring Boot API
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: callform-api
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/callform
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+      SERVER_PORT: 8080
+      SERVER_FORWARD_HEADERS_STRATEGY: native
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - callform-network
+
+  # React Frontend served by Nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+        VITE_AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+    container_name: callform-frontend
+    restart: unless-stopped
+    networks:
+      - callform-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: callform-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ops/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ops/nginx/certs:/etc/nginx/certs:ro
+    restart: unless-stopped
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - callform-network
+
+volumes:
+  postgres-data:
+
+networks:
+  callform-network:
+    driver: bridge

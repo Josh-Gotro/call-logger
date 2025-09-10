@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: callform-db-dev
+    environment:
+      POSTGRES_DB: callform
+      POSTGRES_USER: ${DB_USER:-callform}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-localpassword}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-callform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - callform-network
+
+  # Spring Boot API
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    container_name: callform-api-dev
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/callform
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-callform}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localpassword}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+      - "5005:5005"  # Debug port
+    volumes:
+      - ./api:/app
+      - maven-cache:/root/.m2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - callform-network
+    command: ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: callform-frontend-dev
+    environment:
+      VITE_API_URL: http://localhost:8080/api
+      VITE_AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+      VITE_AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - callform-network
+    command: npm run dev -- --host
+
+volumes:
+  postgres-data:
+  maven-cache:
+
+networks:
+  callform-network:
+    driver: bridge
