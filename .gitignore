@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Development files
+ignore/
+
 # IDE
 .vscode/
 .idea/
