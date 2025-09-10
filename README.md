@@ -45,9 +45,9 @@ An internal web application for WAI DataTech staff to log call details quickly a
    ```
 
 4. Access the application:
-   - Frontend: http://localhost:5173
-   - API: http://localhost:8080
-   - API Health: http://localhost:8080/api/health
+   - Frontend: http://localhost:3003
+   - API: http://localhost:9000
+   - API Health: http://localhost:9000/api/health
 
 ## Development
 
