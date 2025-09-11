@@ -219,8 +219,20 @@ public class CallEntryService {
             OffsetDateTime startDate,
             OffsetDateTime endDate,
             Pageable pageable) {
-        return callEntryRepository.findWithFilters(userEmail, startDate, endDate, pageable)
+        
+        // Use different repository methods based on whether date filtering is needed
+        if (startDate != null && endDate != null && userEmail != null) {
+            return callEntryRepository.findByDatatechEmailAndStartTimeBetween(
+                userEmail, startDate, endDate, pageable)
                 .map(this::mapToDto);
+        } else if (userEmail != null) {
+            return callEntryRepository.findByDatatechEmail(userEmail, pageable)
+                .map(this::mapToDto);
+        } else {
+            // Fallback to all calls with pagination
+            return callEntryRepository.findAll(pageable)
+                .map(this::mapToDto);
+        }
     }
 
     // Note: Distinct values for dropdowns are now handled by ReferenceDataService

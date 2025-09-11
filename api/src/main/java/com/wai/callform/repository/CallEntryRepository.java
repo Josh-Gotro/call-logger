@@ -59,13 +59,14 @@ public interface CallEntryRepository extends JpaRepository<CallEntry, UUID> {
     @Query("SELECT c FROM CallEntry c WHERE c.subject.id = :subjectId ORDER BY c.startTime DESC")
     List<CallEntry> findBySubjectOrderByStartTimeDesc(@Param("subjectId") UUID subjectId);
 
-    // Simplified query for reporting - just user and date filters for now
-    @Query(value = "SELECT * FROM call_entries c", 
-           nativeQuery = true)
-    Page<CallEntry> findWithFilters(@Param("email") String datatechEmail,
-                                   @Param("startDate") OffsetDateTime startDate,
-                                   @Param("endDate") OffsetDateTime endDate,
-                                   Pageable pageable);
+    // Find user calls within date range using simple method name query
+    Page<CallEntry> findByDatatechEmailAndStartTimeBetween(String datatechEmail, 
+                                                          OffsetDateTime startDate, 
+                                                          OffsetDateTime endDate, 
+                                                          Pageable pageable);
+    
+    // Find all user calls if no date filtering needed
+    Page<CallEntry> findByDatatechEmail(String datatechEmail, Pageable pageable);
 
     // Count calls by user
     long countByDatatechEmail(String datatechEmail);

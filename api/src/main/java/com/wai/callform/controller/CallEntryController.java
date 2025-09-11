@@ -119,11 +119,11 @@ public class CallEntryController {
         List<org.springframework.data.domain.Sort.Order> convertedOrders = pageable.getSort().stream()
             .map(order -> {
                 String property = order.getProperty();
-                // Convert camelCase to snake_case for database columns
-                String convertedProperty = property.equals("startTime") ? "start_time" :
-                                         property.equals("endTime") ? "end_time" :
-                                         property.equals("createdAt") ? "created_at" :
-                                         property.equals("updatedAt") ? "updated_at" :
+                // Convert snake_case to camelCase for entity properties
+                String convertedProperty = property.equals("start_time") ? "startTime" :
+                                         property.equals("end_time") ? "endTime" :
+                                         property.equals("created_at") ? "createdAt" :
+                                         property.equals("updated_at") ? "updatedAt" :
                                          property;
                 return new org.springframework.data.domain.Sort.Order(order.getDirection(), convertedProperty);
             })

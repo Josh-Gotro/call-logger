@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import { useActiveCall, useUserCalls, useTodaysCalls } from '../hooks/useCallQueries';
+import { useActiveCall, useTodaysRecentCalls, useTodaysCalls } from '../hooks/useCallQueries';
 import { useLiveDuration } from '../hooks/useLiveDuration';
 import './Dashboard.css';
 
@@ -9,7 +9,7 @@ export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useUser();
   const { data: activeCall, isLoading: activeCallLoading } = useActiveCall(user?.email || '', !!user);
-  const { data: recentCalls, isLoading: recentCallsLoading } = useUserCalls(user?.email || '', 0, 5);
+  const { data: recentCalls, isLoading: recentCallsLoading } = useTodaysRecentCalls(user?.email || '');
   const { data: todaysCalls, isLoading: todaysCallsLoading } = useTodaysCalls(user?.email || '');
   const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null);
 
@@ -51,7 +51,7 @@ export const Dashboard: React.FC = () => {
                 {activeCall.category && <p><strong>Category:</strong> {activeCall.category}</p>}
                 {activeCall.subject && <p><strong>Subject:</strong> {activeCall.subject}</p>}
               </div>
-              <button 
+              <button
                 className="btn btn-primary"
                 onClick={() => navigate('/active-call')}
               >
@@ -65,7 +65,7 @@ export const Dashboard: React.FC = () => {
                 <span>Ready for Calls</span>
               </div>
               <p>No active call at the moment</p>
-              <button 
+              <button
                 className="btn btn-primary"
                 onClick={() => navigate('/start-call')}
               >
@@ -79,20 +79,20 @@ export const Dashboard: React.FC = () => {
         <div className="dashboard-card quick-actions-card">
           <h3>Quick Actions</h3>
           <div className="quick-actions">
-            <button 
+            <button
               className="action-btn"
               onClick={() => navigate('/start-call')}
               disabled={!!activeCall}
             >
               📞 New Call
             </button>
-            <button 
+            <button
               className="action-btn"
               onClick={() => navigate('/history')}
             >
               📋 View History
             </button>
-            <button 
+            <button
               className="action-btn"
               onClick={() => navigate('/reports')}
             >
@@ -122,7 +122,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Recent Calls Card */}
         <div className="dashboard-card recent-calls-card">
-          <h3>Recent Calls</h3>
+          <h3>Today's 5 Most Recent Calls</h3>
           {recentCallsLoading ? (
             <p>Loading recent calls...</p>
           ) : recentCalls && recentCalls.content.length > 0 ? (
@@ -139,7 +139,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </div>
               ))}
-              <button 
+              <button
                 className="btn btn-link"
                 onClick={() => navigate('/history')}
               >
@@ -147,7 +147,7 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
           ) : (
-            <p>No recent calls to display</p>
+            <p>No calls today yet</p>
           )}
         </div>
       </div>

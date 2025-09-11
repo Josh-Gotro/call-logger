@@ -57,14 +57,39 @@ export const useFilteredCalls = (filters: {
 
 // Get today's calls for statistics
 export const useTodaysCalls = (userEmail: string) => {
-  const today = new Date();
-  // Set to start of day in local timezone, then convert to ISO string
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  // Set to end of day in local timezone, then convert to ISO string
-  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+  // Get current date in Alaska timezone
+  const now = new Date();
   
-  const startDate = startOfDay.toISOString(); // Full OffsetDateTime format
-  const endDate = endOfDay.toISOString(); // Full OffsetDateTime format
+  // Create a date object representing "today" in Alaska timezone
+  // We'll use the current UTC time and adjust to Alaska time to find the date boundaries
+  const alaskaDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Anchorage' }));
+  
+  // Get the year, month, day in Alaska timezone
+  const year = alaskaDate.getFullYear();
+  const month = alaskaDate.getMonth(); // 0-based
+  const day = alaskaDate.getDate();
+  
+  // Create start of day (midnight) and end of day in Alaska timezone
+  // Then convert to UTC for the API call
+  const startOfDayAlaska = new Date(year, month, day, 0, 0, 0, 0);
+  const endOfDayAlaska = new Date(year, month, day, 23, 59, 59, 999);
+  
+  // Get the timezone offset for Alaska (in minutes)
+  const alaskaOffset = new Date().toLocaleString('en-US', { 
+    timeZone: 'America/Anchorage',
+    timeZoneName: 'longOffset'
+  }).match(/GMT([+-]\d{1,2}):?(\d{2})?/)?.[0] || 'GMT-09:00';
+  
+  // Convert Alaska times to UTC by adding the offset
+  const offsetMatch = alaskaOffset.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
+  const offsetSign = offsetMatch?.[1] === '+' ? 1 : -1;
+  const offsetHours = parseInt(offsetMatch?.[2] || '9');
+  const offsetMinutes = parseInt(offsetMatch?.[3] || '0');
+  const totalOffsetMs = offsetSign * (offsetHours * 60 + offsetMinutes) * 60 * 1000;
+  
+  // Adjust Alaska times to UTC
+  const startDate = new Date(startOfDayAlaska.getTime() - totalOffsetMs).toISOString();
+  const endDate = new Date(endOfDayAlaska.getTime() - totalOffsetMs).toISOString();
   
   return useQuery({
     queryKey: queryKeys.calls.today(userEmail),
@@ -73,6 +98,53 @@ export const useTodaysCalls = (userEmail: string) => {
       startDate,
       endDate,
       size: 1000, // Large size to get all calls for the day
+    }),
+    enabled: !!userEmail,
+  });
+};
+
+// Get today's recent calls (last 5 from today only)
+export const useTodaysRecentCalls = (userEmail: string) => {
+  // Get current date in Alaska timezone
+  const now = new Date();
+  
+  // Create a date object representing "today" in Alaska timezone
+  const alaskaDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Anchorage' }));
+  
+  // Get the year, month, day in Alaska timezone
+  const year = alaskaDate.getFullYear();
+  const month = alaskaDate.getMonth(); // 0-based
+  const day = alaskaDate.getDate();
+  
+  // Create start of day (midnight) and end of day in Alaska timezone
+  const startOfDayAlaska = new Date(year, month, day, 0, 0, 0, 0);
+  const endOfDayAlaska = new Date(year, month, day, 23, 59, 59, 999);
+  
+  // Get the timezone offset for Alaska (in minutes)
+  const alaskaOffset = new Date().toLocaleString('en-US', { 
+    timeZone: 'America/Anchorage',
+    timeZoneName: 'longOffset'
+  }).match(/GMT([+-]\d{1,2}):?(\d{2})?/)?.[0] || 'GMT-09:00';
+  
+  // Convert Alaska times to UTC by adding the offset
+  const offsetMatch = alaskaOffset.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
+  const offsetSign = offsetMatch?.[1] === '+' ? 1 : -1;
+  const offsetHours = parseInt(offsetMatch?.[2] || '9');
+  const offsetMinutes = parseInt(offsetMatch?.[3] || '0');
+  const totalOffsetMs = offsetSign * (offsetHours * 60 + offsetMinutes) * 60 * 1000;
+  
+  // Adjust Alaska times to UTC
+  const startDate = new Date(startOfDayAlaska.getTime() - totalOffsetMs).toISOString();
+  const endDate = new Date(endOfDayAlaska.getTime() - totalOffsetMs).toISOString();
+  
+  return useQuery({
+    queryKey: [...queryKeys.calls.list({ userEmail }), 'todayRecent'],
+    queryFn: () => callsApi.getFilteredCalls({
+      userEmail,
+      startDate,
+      endDate,
+      size: 5,
+      sort: 'startTime,desc',
     }),
     enabled: !!userEmail,
   });

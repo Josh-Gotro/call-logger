@@ -44,12 +44,12 @@ export const ActiveCall: React.FC = () => {
   } = useForm<ActiveCallFormData>();
 
   const selectedParentId = watch('programManagementParentId');
-  
+
   // Clear child selection when parent changes or has no children
   useEffect(() => {
     const selectedParent = programManagement.data?.find(p => p.id === selectedParentId);
     const hasChildren = selectedParent?.children && selectedParent.children.length > 0;
-    
+
     if (!hasChildren) {
       setValue('programManagementChildId', '');
     }
@@ -88,36 +88,36 @@ export const ActiveCall: React.FC = () => {
       setValue('isInbound', activeCall.isInbound ? 'yes' : 'no');
       setValue('isAgent', activeCall.isAgent ? 'yes' : 'no');
       setValue('comments', activeCall.comments || '');
-      
+
       // Note: We need to find IDs from the display names
       // This is a limitation - the API returns names but we need IDs for form submission
       // For existing calls, we'll try to match by name
-      
+
       if (activeCall.category && categories.data) {
         const category = categories.data.find(c => c.name === activeCall.category);
         if (category) {
           setValue('categoryId', category.id);
         }
       }
-      
+
       if (activeCall.subject && subjects.data) {
         const subject = subjects.data.find(s => s.name === activeCall.subject);
         if (subject) {
           setValue('subjectId', subject.id);
         }
       }
-      
+
       // For program management, we need to parse the display string
       // Format is typically "Parent > Child" or just "Parent"
       if (activeCall.programManagement && programManagement.data) {
         const parts = activeCall.programManagement.split(' > ');
         const parentName = parts[0];
         const childName = parts[1];
-        
+
         const parent = programManagement.data.find(p => p.name === parentName);
         if (parent) {
           setValue('programManagementParentId', parent.id);
-          
+
           if (childName && parent.children) {
             const child = parent.children.find(c => c.name === childName);
             if (child) {
@@ -204,9 +204,9 @@ export const ActiveCall: React.FC = () => {
       // Then end the call
       await endCallMutation.mutateAsync(activeCall.id);
       // Use replace: true to avoid going back to active call, and add a flag to prevent auto-redirect
-      navigate('/start-call', { 
+      navigate('/start-call', {
         state: { message: 'Call ended successfully', fromEndCall: true },
-        replace: true 
+        replace: true
       });
     } catch (error) {
       console.error('Failed to end call:', error);
@@ -297,7 +297,7 @@ export const ActiveCall: React.FC = () => {
           </div>
 
           <div className="form-section">
-            <h3>Program Management</h3>
+            <h3>Management Program</h3>
 
             <div className="form-row">
               <div className="form-group">
@@ -312,8 +312,8 @@ export const ActiveCall: React.FC = () => {
                 </select>
               </div>
 
-              <div className="form-group" style={{ 
-                visibility: selectedParentId && availableChildren.length > 0 ? 'visible' : 'hidden' 
+              <div className="form-group" style={{
+                visibility: selectedParentId && availableChildren.length > 0 ? 'visible' : 'hidden'
               }}>
                 <label>Sub-Department</label>
                 <select
