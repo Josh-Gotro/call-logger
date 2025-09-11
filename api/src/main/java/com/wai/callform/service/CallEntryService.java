@@ -4,7 +4,13 @@ import com.wai.callform.dto.CallEntryDto;
 import com.wai.callform.dto.StartCallRequest;
 import com.wai.callform.dto.UpdateCallRequest;
 import com.wai.callform.entity.CallEntry;
+import com.wai.callform.entity.CategoryItem;
+import com.wai.callform.entity.ProgramManagementItem;
+import com.wai.callform.entity.SubjectItem;
 import com.wai.callform.repository.CallEntryRepository;
+import com.wai.callform.repository.CategoryItemRepository;
+import com.wai.callform.repository.ProgramManagementItemRepository;
+import com.wai.callform.repository.SubjectItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,6 +30,9 @@ import java.util.UUID;
 public class CallEntryService {
 
     private final CallEntryRepository callEntryRepository;
+    private final CategoryItemRepository categoryItemRepository;
+    private final SubjectItemRepository subjectItemRepository;
+    private final ProgramManagementItemRepository programManagementItemRepository;
 
     /**
      * Start a new call for the specified user
@@ -103,8 +112,62 @@ public class CallEntryService {
             callEntry.setComments(request.getComments());
         }
         
-        // TODO: Update reference fields when IDs are provided
-        // This would require injecting repositories for ProgramManagement, Category, Subject
+        // Update reference fields using IDs
+        if (request.getProgramManagementParentId() != null && !request.getProgramManagementParentId().isEmpty()) {
+            try {
+                UUID parentId = UUID.fromString(request.getProgramManagementParentId());
+                ProgramManagementItem parent = programManagementItemRepository.findById(parentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Program Management Parent not found: " + parentId));
+                callEntry.setProgramManagementParent(parent);
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid Program Management Parent ID: {}", request.getProgramManagementParentId());
+                throw new IllegalArgumentException("Invalid Program Management Parent ID");
+            }
+        } else {
+            callEntry.setProgramManagementParent(null);
+        }
+        
+        if (request.getProgramManagementChildId() != null && !request.getProgramManagementChildId().isEmpty()) {
+            try {
+                UUID childId = UUID.fromString(request.getProgramManagementChildId());
+                ProgramManagementItem child = programManagementItemRepository.findById(childId)
+                    .orElseThrow(() -> new IllegalArgumentException("Program Management Child not found: " + childId));
+                callEntry.setProgramManagementChild(child);
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid Program Management Child ID: {}", request.getProgramManagementChildId());
+                throw new IllegalArgumentException("Invalid Program Management Child ID");
+            }
+        } else {
+            callEntry.setProgramManagementChild(null);
+        }
+        
+        if (request.getCategoryId() != null && !request.getCategoryId().isEmpty()) {
+            try {
+                UUID categoryId = UUID.fromString(request.getCategoryId());
+                CategoryItem category = categoryItemRepository.findById(categoryId)
+                    .orElseThrow(() -> new IllegalArgumentException("Category not found: " + categoryId));
+                callEntry.setCategory(category);
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid Category ID: {}", request.getCategoryId());
+                throw new IllegalArgumentException("Invalid Category ID");
+            }
+        } else {
+            callEntry.setCategory(null);
+        }
+        
+        if (request.getSubjectId() != null && !request.getSubjectId().isEmpty()) {
+            try {
+                UUID subjectId = UUID.fromString(request.getSubjectId());
+                SubjectItem subject = subjectItemRepository.findById(subjectId)
+                    .orElseThrow(() -> new IllegalArgumentException("Subject not found: " + subjectId));
+                callEntry.setSubject(subject);
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid Subject ID: {}", request.getSubjectId());
+                throw new IllegalArgumentException("Invalid Subject ID");
+            }
+        } else {
+            callEntry.setSubject(null);
+        }
 
         CallEntry savedCall = callEntryRepository.save(callEntry);
         log.info("Updated call ID: {}", savedCall.getId());

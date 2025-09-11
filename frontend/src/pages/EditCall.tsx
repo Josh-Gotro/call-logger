@@ -50,8 +50,8 @@ export const EditCall: React.FC = () => {
   // Initialize form with call data
   useEffect(() => {
     if (call) {
-      setValue('isInbound', call.isInbound || 'no');
-      setValue('isAgent', call.isAgent || 'no');
+      setValue('isInbound', call.isInbound ? 'yes' : 'no');
+      setValue('isAgent', call.isAgent ? 'yes' : 'no');
       setValue('comments', call.comments || '');
       setValue('startTime', formatDateTimeForInput(call.startTime));
       

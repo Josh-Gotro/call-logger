@@ -85,22 +85,50 @@ export const ActiveCall: React.FC = () => {
   // Initialize form with current call data
   useEffect(() => {
     if (activeCall) {
-      setValue('isInbound', activeCall.isInbound || 'yes');
-      setValue('isAgent', activeCall.isAgent || 'no');
+      setValue('isInbound', activeCall.isInbound ? 'yes' : 'no');
+      setValue('isAgent', activeCall.isAgent ? 'yes' : 'no');
       setValue('comments', activeCall.comments || '');
-      // Note: We'll need to extract IDs from the display strings
-      // For now, we'll leave these empty until we implement proper mapping
+      
+      // Note: We need to find IDs from the display names
+      // This is a limitation - the API returns names but we need IDs for form submission
+      // For existing calls, we'll try to match by name
+      
+      if (activeCall.category && categories.data) {
+        const category = categories.data.find(c => c.name === activeCall.category);
+        if (category) {
+          setValue('categoryId', category.id);
+        }
+      }
+      
+      if (activeCall.subject && subjects.data) {
+        const subject = subjects.data.find(s => s.name === activeCall.subject);
+        if (subject) {
+          setValue('subjectId', subject.id);
+        }
+      }
+      
+      // For program management, we need to parse the display string
+      // Format is typically "Parent > Child" or just "Parent"
+      if (activeCall.programManagement && programManagement.data) {
+        const parts = activeCall.programManagement.split(' > ');
+        const parentName = parts[0];
+        const childName = parts[1];
+        
+        const parent = programManagement.data.find(p => p.name === parentName);
+        if (parent) {
+          setValue('programManagementParentId', parent.id);
+          
+          if (childName && parent.children) {
+            const child = parent.children.find(c => c.name === childName);
+            if (child) {
+              setValue('programManagementChildId', child.id);
+            }
+          }
+        }
+      }
     }
-  }, [activeCall, setValue]);
+  }, [activeCall, setValue, categories.data, subjects.data, programManagement.data]);
 
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
-    return `${mins}m`;
-  };
 
   const formatTime = (dateString: string): string => {
     return new Date(dateString).toLocaleTimeString();
@@ -143,6 +171,37 @@ export const ActiveCall: React.FC = () => {
     if (!activeCall) return;
 
     try {
+      // First, save any pending form changes
+      const formData = watch(); // Get current form values
+      if (isDirty) {
+        const updateData: UpdateCallRequest = {
+          isInbound: formData.isInbound === 'yes',
+          isAgent: formData.isAgent === 'yes',
+          comments: formData.comments || undefined,
+        };
+
+        // Add IDs only if selected
+        if (formData.programManagementParentId) {
+          updateData.programManagementParentId = formData.programManagementParentId;
+        }
+        if (formData.programManagementChildId) {
+          updateData.programManagementChildId = formData.programManagementChildId;
+        }
+        if (formData.categoryId) {
+          updateData.categoryId = formData.categoryId;
+        }
+        if (formData.subjectId) {
+          updateData.subjectId = formData.subjectId;
+        }
+
+        // Update the call first
+        await updateCallMutation.mutateAsync({
+          callId: activeCall.id,
+          request: updateData,
+        });
+      }
+
+      // Then end the call
       await endCallMutation.mutateAsync(activeCall.id);
       // Use replace: true to avoid going back to active call, and add a flag to prevent auto-redirect
       navigate('/start-call', { 

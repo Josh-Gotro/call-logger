@@ -43,43 +43,46 @@ export const StartCall: React.FC = () => {
   }, [activeCall, navigate, isStartingCall, location.state?.fromEndCall]);
 
   const onSubmit = async (data: StartCallRequest) => {
-    
+
     try {
       setIsStartingCall(true);
-      
+
       const result = await startCallMutation.mutateAsync(data);
-      
-      
+
+
       if (!result) {
         throw new Error('Mutation returned null/undefined result');
       }
-      
+
       const navigationState = {
         callData: result,
         fromStartCall: true
       };
-      
-      
+
+
       try {
-        navigate('/active-call', { 
+        navigate('/active-call', {
           state: navigationState,
-          replace: true 
+          replace: true
         });
       } catch (navError) {
         console.error('StartCall: Navigation failed:', navError);
         throw navError;
       }
-      
+
       setIsStartingCall(false);
-      
+
     } catch (error) {
       console.error('=== StartCall: Error in onSubmit ===');
       console.error('StartCall: Error type:', typeof error);
-      console.error('StartCall: Error message:', error?.message);
+      console.error(
+        'StartCall: Error message:',
+        error instanceof Error ? error.message : String(error)
+      );
       console.error('StartCall: Full error:', error);
       setIsStartingCall(false);
     }
-    
+
   };
 
   return (
