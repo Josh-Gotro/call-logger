@@ -102,9 +102,35 @@ public class CallEntryController {
             Pageable pageable) {
         log.debug("Getting filtered calls with filters - user: {}, programParentId: {}, categoryId: {}", 
                  userEmail, programParentId, categoryId);
+        
+        // Convert camelCase sort fields to database column names
+        Pageable convertedPageable = convertSortFields(pageable);
+        
         Page<CallEntryDto> calls = callEntryService.getCallsWithFilters(
-            userEmail, programParentId, categoryId, startDate, endDate, pageable);
+            userEmail, programParentId, categoryId, startDate, endDate, convertedPageable);
         return ResponseEntity.ok(calls);
+    }
+    
+    private Pageable convertSortFields(Pageable pageable) {
+        if (pageable.getSort().isEmpty()) {
+            return pageable;
+        }
+        
+        List<org.springframework.data.domain.Sort.Order> convertedOrders = pageable.getSort().stream()
+            .map(order -> {
+                String property = order.getProperty();
+                // Convert camelCase to snake_case for database columns
+                String convertedProperty = property.equals("startTime") ? "start_time" :
+                                         property.equals("endTime") ? "end_time" :
+                                         property.equals("createdAt") ? "created_at" :
+                                         property.equals("updatedAt") ? "updated_at" :
+                                         property;
+                return new org.springframework.data.domain.Sort.Order(order.getDirection(), convertedProperty);
+            })
+            .toList();
+        
+        org.springframework.data.domain.Sort convertedSort = org.springframework.data.domain.Sort.by(convertedOrders);
+        return org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), convertedSort);
     }
 
     /**

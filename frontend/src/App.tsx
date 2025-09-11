@@ -1,25 +1,35 @@
-import { useState } from 'react'
-import './App.css'
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { UserProvider } from './contexts/UserContext';
+import { AppRouter } from './router/AppRouter';
+import { queryClient } from './lib/query-client';
+import './App.css';
+
+// Conditionally import React Query DevTools only in development
+const ReactQueryDevtools = import.meta.env.DEV
+  ? React.lazy(() =>
+      import('@tanstack/react-query-devtools').then((d) => ({
+        default: d.ReactQueryDevtools,
+      }))
+    )
+  : null;
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <div className="App">
-      <h1>DataTech Call Form</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Application is ready for development
-      </p>
-    </div>
-  )
+    <QueryClientProvider client={queryClient}>
+      <UserProvider>
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      </UserProvider>
+      {ReactQueryDevtools && (
+        <React.Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </React.Suspense>
+      )}
+    </QueryClientProvider>
+  );
 }
 
-export default App
+export default App;

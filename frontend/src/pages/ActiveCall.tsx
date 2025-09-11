@@ -1,0 +1,395 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { useUser } from '../contexts/UserContext';
+import { useActiveCall, useUpdateCall, useEndCall } from '../hooks/useCallQueries';
+import { useAllReferenceData } from '../hooks/useReferenceQueries';
+import { useLiveDuration } from '../hooks/useLiveDuration';
+import { UpdateCallRequest } from '../types/api.types';
+import './ActiveCall.css';
+
+interface ActiveCallFormData {
+  isInbound: string;
+  programManagementParentId: string;
+  programManagementChildId: string;
+  categoryId: string;
+  subjectId: string;
+  isAgent: string;
+  comments: string;
+}
+
+export const ActiveCall: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useUser();
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
+
+  // Use call data from navigation state if available, otherwise from query
+  const callDataFromState = location.state?.callData;
+  const { data: queriedActiveCall, isLoading } = useActiveCall(user?.email || '', !!user);
+  const activeCall = callDataFromState || queriedActiveCall;
+
+
+  const { programManagement, categories, subjects } = useAllReferenceData();
+  const updateCallMutation = useUpdateCall();
+  const endCallMutation = useEndCall();
+  const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { isDirty },
+  } = useForm<ActiveCallFormData>();
+
+  const selectedParentId = watch('programManagementParentId');
+  
+  // Clear child selection when parent changes or has no children
+  useEffect(() => {
+    const selectedParent = programManagement.data?.find(p => p.id === selectedParentId);
+    const hasChildren = selectedParent?.children && selectedParent.children.length > 0;
+    
+    if (!hasChildren) {
+      setValue('programManagementChildId', '');
+    }
+  }, [selectedParentId, programManagement.data, setValue]);
+
+  // Redirect logic using navigation state data priority
+  useEffect(() => {
+    const fromStartCall = location.state?.fromStartCall;
+
+
+    // If we have call data from navigation state, we're good to go
+    if (callDataFromState) {
+      return; // No need to redirect
+    }
+
+    // If we came from starting a call but don't have state data, wait briefly for query
+    if (fromStartCall) {
+      const timer = setTimeout(() => {
+        if (!queriedActiveCall && !isLoading) {
+          console.warn('ActiveCall: No active call found after starting call, redirecting to dashboard');
+          navigate('/', { state: { message: 'Call was started but could not be loaded. Please check your call history.' } });
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      // Normal case - redirect immediately if no active call from query
+      if (!isLoading && !queriedActiveCall) {
+        navigate('/');
+      }
+    }
+  }, [callDataFromState, queriedActiveCall, isLoading, navigate, location.state?.fromStartCall]);
+
+  // Initialize form with current call data
+  useEffect(() => {
+    if (activeCall) {
+      setValue('isInbound', activeCall.isInbound || 'yes');
+      setValue('isAgent', activeCall.isAgent || 'no');
+      setValue('comments', activeCall.comments || '');
+      // Note: We'll need to extract IDs from the display strings
+      // For now, we'll leave these empty until we implement proper mapping
+    }
+  }, [activeCall, setValue]);
+
+  const formatDuration = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  };
+
+  const formatTime = (dateString: string): string => {
+    return new Date(dateString).toLocaleTimeString();
+  };
+
+  const onSubmit = async (data: ActiveCallFormData) => {
+    if (!activeCall) return;
+
+    try {
+      const updateData: UpdateCallRequest = {
+        isInbound: data.isInbound === 'yes',
+        isAgent: data.isAgent === 'yes',
+        comments: data.comments || undefined,
+      };
+
+      // Add IDs only if selected
+      if (data.programManagementParentId) {
+        updateData.programManagementParentId = data.programManagementParentId;
+      }
+      if (data.programManagementChildId) {
+        updateData.programManagementChildId = data.programManagementChildId;
+      }
+      if (data.categoryId) {
+        updateData.categoryId = data.categoryId;
+      }
+      if (data.subjectId) {
+        updateData.subjectId = data.subjectId;
+      }
+
+      await updateCallMutation.mutateAsync({
+        callId: activeCall.id,
+        request: updateData,
+      });
+    } catch (error) {
+      console.error('Failed to update call:', error);
+    }
+  };
+
+  const handleEndCall = async () => {
+    if (!activeCall) return;
+
+    try {
+      await endCallMutation.mutateAsync(activeCall.id);
+      // Use replace: true to avoid going back to active call, and add a flag to prevent auto-redirect
+      navigate('/start-call', { 
+        state: { message: 'Call ended successfully', fromEndCall: true },
+        replace: true 
+      });
+    } catch (error) {
+      console.error('Failed to end call:', error);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="loading">Loading active call...</div>;
+  }
+
+  if (!activeCall) {
+    return <div className="no-active-call">No active call found</div>;
+  }
+
+  // Get children for selected parent
+  const selectedParent = programManagement.data?.find(p => p.id === selectedParentId);
+  const availableChildren = selectedParent?.children || [];
+
+  return (
+    <div className="active-call-page">
+      <div className="page-header">
+        <div className="call-status">
+          <div className="status-indicator">
+            <span className="status-dot active"></span>
+            <span>Call in Progress</span>
+          </div>
+          <div className="call-timer">
+            <span className="timer-label">Duration:</span>
+            <span className="timer-value">{liveDuration}</span>
+          </div>
+        </div>
+        <div className="call-info">
+          <h2>Active Call Details</h2>
+          <p>Started at {formatTime(activeCall.startTime)}</p>
+        </div>
+      </div>
+
+      <div className="active-call-container">
+        <form onSubmit={handleSubmit(onSubmit)} className="call-form">
+          <div className="form-section">
+            <h3>Call Classification</h3>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Call Type</label>
+                <div className="toggle-group">
+                  <label className="toggle-option">
+                    <input
+                      type="radio"
+                      value="yes"
+                      {...register('isInbound')}
+                    />
+                    <span className="toggle-label">Inbound</span>
+                  </label>
+                  <label className="toggle-option">
+                    <input
+                      type="radio"
+                      value="no"
+                      {...register('isInbound')}
+                    />
+                    <span className="toggle-label">Outbound</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Is Caller an Agent?</label>
+                <div className="toggle-group">
+                  <label className="toggle-option">
+                    <input
+                      type="radio"
+                      value="no"
+                      {...register('isAgent')}
+                    />
+                    <span className="toggle-label">No</span>
+                  </label>
+                  <label className="toggle-option">
+                    <input
+                      type="radio"
+                      value="yes"
+                      {...register('isAgent')}
+                    />
+                    <span className="toggle-label">Yes</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3>Program Management</h3>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Department</label>
+                <select {...register('programManagementParentId')}>
+                  <option value="">Select Department</option>
+                  {programManagement.data?.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ 
+                visibility: selectedParentId && availableChildren.length > 0 ? 'visible' : 'hidden' 
+              }}>
+                <label>Sub-Department</label>
+                <select
+                  {...register('programManagementChildId')}
+                  disabled={!selectedParentId || availableChildren.length === 0}
+                >
+                  <option value="">Select Sub-Department</option>
+                  {availableChildren.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3>Call Details</h3>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Category</label>
+                <select {...register('categoryId')}>
+                  <option value="">Select Category</option>
+                  {categories.data?.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Subject</label>
+                <select {...register('subjectId')}>
+                  <option value="">Select Subject</option>
+                  {subjects.data?.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3>Comments</h3>
+            <div className="form-group">
+              <textarea
+                {...register('comments')}
+                placeholder="Add any additional notes about this call..."
+                rows={4}
+                className="comments-textarea"
+              />
+            </div>
+          </div>
+
+          <div className="form-actions">
+            {updateCallMutation.isError && (
+              <div className="error-message">
+                Failed to update call. Please try again.
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={!isDirty || updateCallMutation.isPending}
+            >
+              {updateCallMutation.isPending ? 'Updating...' : 'Update Call'}
+            </button>
+          </div>
+        </form>
+
+        <div className="call-sidebar">
+          <div className="sidebar-card call-summary">
+            <h4>Call Summary</h4>
+            <div className="summary-item">
+              <span>Datatech:</span>
+              <span>{activeCall.datatechName}</span>
+            </div>
+            <div className="summary-item">
+              <span>Email:</span>
+              <span>{activeCall.datatechEmail}</span>
+            </div>
+            <div className="summary-item">
+              <span>Started:</span>
+              <span>{formatTime(activeCall.startTime)}</span>
+            </div>
+            <div className="summary-item">
+              <span>Duration:</span>
+              <span>{liveDuration}</span>
+            </div>
+          </div>
+
+          <div className="sidebar-card end-call-section">
+            <h4>End Call</h4>
+            <p>When you're finished with this call, click the button below to end it.</p>
+
+            {!showEndConfirm ? (
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => setShowEndConfirm(true)}
+              >
+                End Call
+              </button>
+            ) : (
+              <div className="end-call-confirm">
+                <p><strong>Are you sure?</strong></p>
+                <p>This will stop the timer and mark the call as completed.</p>
+                <div className="confirm-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowEndConfirm(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={handleEndCall}
+                    disabled={endCallMutation.isPending}
+                  >
+                    {endCallMutation.isPending ? 'Ending...' : 'Confirm End Call'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

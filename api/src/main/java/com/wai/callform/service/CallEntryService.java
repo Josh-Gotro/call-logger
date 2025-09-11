@@ -82,28 +82,29 @@ public class CallEntryService {
         CallEntry callEntry = callEntryRepository.findById(callId)
                 .orElseThrow(() -> new IllegalArgumentException("Call not found"));
 
-        // TODO: Update fields implementation for new schema structure
-        // Temporary comment out until DTOs are updated for new entity relationships
-        /*
-         * if (request.getIsInbound() != null) {
-         * callEntry.setIsInbound(request.getIsInbound());
-         * }
-         * if (request.getProgramManagement() != null) {
-         * callEntry.setProgramManagement(request.getProgramManagement());
-         * }
-         * if (request.getCategory() != null) {
-         * callEntry.setCategory(request.getCategory());
-         * }
-         * if (request.getSubject() != null) {
-         * callEntry.setSubject(request.getSubject());
-         * }
-         * if (request.getIsAgent() != null) {
-         * callEntry.setIsAgent(request.getIsAgent());
-         * }
-         */
+        // Update boolean fields
+        if (request.getIsInbound() != null) {
+            callEntry.setIsInbound(request.getIsInbound());
+        }
+        if (request.getIsAgent() != null) {
+            callEntry.setIsAgent(request.getIsAgent());
+        }
+        
+        // Update time fields
+        if (request.getStartTime() != null) {
+            callEntry.setStartTime(request.getStartTime());
+        }
+        if (request.getEndTime() != null) {
+            callEntry.setEndTime(request.getEndTime());
+        }
+        
+        // Update comments
         if (request.getComments() != null) {
             callEntry.setComments(request.getComments());
         }
+        
+        // TODO: Update reference fields when IDs are provided
+        // This would require injecting repositories for ProgramManagement, Category, Subject
 
         CallEntry savedCall = callEntryRepository.save(callEntry);
         log.info("Updated call ID: {}", savedCall.getId());
@@ -155,8 +156,7 @@ public class CallEntryService {
             OffsetDateTime startDate,
             OffsetDateTime endDate,
             Pageable pageable) {
-        return callEntryRepository.findWithFilters(userEmail, programParentId, categoryId,
-                startDate, endDate, pageable)
+        return callEntryRepository.findWithFilters(userEmail, startDate, endDate, pageable)
                 .map(this::mapToDto);
     }
 
@@ -193,12 +193,11 @@ public class CallEntryService {
         dto.setDatatechEmail(entity.getDatatechEmail());
         dto.setStartTime(entity.getStartTime());
         dto.setEndTime(entity.getEndTime());
-        // TODO: Update DTO mapping for new entity structure
-        dto.setIsInbound(entity.getIsInbound() != null ? (entity.getIsInbound() ? "yes" : "no") : null);
+        dto.setIsInbound(entity.getIsInbound());
         dto.setProgramManagement(entity.getProgramManagementDisplay());
         dto.setCategory(entity.getCategory() != null ? entity.getCategory().getName() : null);
         dto.setSubject(entity.getSubject() != null ? entity.getSubject().getName() : null);
-        dto.setIsAgent(entity.getIsAgent() != null ? (entity.getIsAgent() ? "yes" : "no") : null);
+        dto.setIsAgent(entity.getIsAgent());
         dto.setComments(entity.getComments());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());

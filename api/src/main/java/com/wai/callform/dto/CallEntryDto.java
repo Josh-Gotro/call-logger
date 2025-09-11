@@ -28,7 +28,7 @@ public class CallEntryDto {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
     private OffsetDateTime endTime;
 
-    private String isInbound;  // "yes", "no", or null
+    private Boolean isInbound;
 
     @Size(max = 100, message = "Program management must not exceed 100 characters")
     private String programManagement;
@@ -39,7 +39,7 @@ public class CallEntryDto {
     @Size(max = 100, message = "Subject must not exceed 100 characters")
     private String subject;
 
-    private String isAgent;  // "yes", "no", or null
+    private Boolean isAgent;
 
     private String comments;
 
