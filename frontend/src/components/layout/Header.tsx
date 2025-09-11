@@ -4,7 +4,17 @@ import { useActiveCall } from '../../hooks/useCallQueries';
 import { useLiveDuration } from '../../hooks/useLiveDuration';
 import './Header.css';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  isMobile: boolean;
+  isMobileMenuOpen: boolean;
+  onToggleMobileMenu: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ 
+  isMobile, 
+  isMobileMenuOpen, 
+  onToggleMobileMenu 
+}) => {
   const { user, logout } = useUser();
   const { data: activeCall } = useActiveCall(user?.email || '', !!user);
   const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null);
@@ -21,6 +31,18 @@ export const Header: React.FC = () => {
   return (
     <header className="app-header">
       <div className="header-left">
+        {isMobile && (
+          <button 
+            className="hamburger-btn"
+            onClick={onToggleMobileMenu}
+            aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={isMobileMenuOpen}
+          >
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
+          </button>
+        )}
         <h1 className="app-title">DataTech Call Logger</h1>
         {activeCall && (
           <div className="active-call-indicator">

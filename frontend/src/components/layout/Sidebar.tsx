@@ -18,7 +18,7 @@ export const Sidebar: React.FC = () => {
   ];
 
   // Only include Active Call item when there's an active call
-  const navItems = activeCall 
+  const navItems = activeCall
     ? [
         baseNavItems[0], // Dashboard
         { path: '/active-call', label: 'Active Call', icon: '🔴' },
@@ -54,7 +54,6 @@ export const Sidebar: React.FC = () => {
 
       <div className="sidebar-footer">
         <div className="quick-stats">
-          <h4>Quick Stats</h4>
           {activeCall ? (
             <div className="stat-item">
               <span>Current Call:</span>

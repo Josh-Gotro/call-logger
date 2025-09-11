@@ -152,7 +152,7 @@
 .stat-value {
   font-size: 3rem;
   font-weight: 800;
-  color: #667eea;
+  color: #45b615;
   margin-bottom: 0.5rem;
   line-height: 1;
 }
@@ -259,4 +259,29 @@
   text-align: center;
   padding: 2rem;
   color: #6c757d;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .stats-card {
+    grid-column: span 1; /* Reset to single column span on mobile */
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr; /* Stack statistics cards vertically */
+    gap: 1rem;
+  }
+  
+  .stat {
+    padding: 1.5rem 1rem;
+  }
+  
+  .stat-value {
+    font-size: 2.5rem;
+  }
 }

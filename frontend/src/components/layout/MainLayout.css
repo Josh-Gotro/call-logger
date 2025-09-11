@@ -17,3 +17,16 @@
   overflow-y: auto;
   background: #ffffff;
 }
+
+/* Responsive layout adjustments */
+@media (max-width: 768px) {
+  .app-main {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-main {
+    padding: 0.75rem;
+  }
+}
