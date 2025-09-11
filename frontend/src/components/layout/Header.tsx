@@ -25,11 +25,11 @@ export const Header: React.FC = () => {
         {activeCall && (
           <div className="active-call-indicator">
             <span className="pulse-dot"></span>
-            <span>Active Call - {liveDuration}</span>
+            <span> - {liveDuration}</span>
           </div>
         )}
       </div>
-      
+
       <div className="header-right">
         {user && (
           <div className="user-info">

@@ -10,13 +10,23 @@ export const Sidebar: React.FC = () => {
   const { data: activeCall } = useActiveCall(user?.email || '', !!user);
   const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null);
 
-  const navItems = [
+  const baseNavItems = [
     { path: '/', label: 'Dashboard', icon: '🏠' },
     { path: '/start-call', label: 'Start New Call', icon: '📞', disabled: !!activeCall },
-    { path: '/active-call', label: 'Active Call', icon: '🔴', disabled: !activeCall },
     { path: '/history', label: 'Call History', icon: '📋' },
     { path: '/reports', label: 'Reports', icon: '📊' },
   ];
+
+  // Only include Active Call item when there's an active call
+  const navItems = activeCall 
+    ? [
+        baseNavItems[0], // Dashboard
+        { path: '/active-call', label: 'Active Call', icon: '🔴' },
+        baseNavItems[1], // Start New Call (disabled)
+        baseNavItems[2], // Call History
+        baseNavItems[3], // Reports
+      ]
+    : baseNavItems;
 
   return (
     <aside className="app-sidebar">

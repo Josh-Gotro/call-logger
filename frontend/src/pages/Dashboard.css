@@ -37,20 +37,27 @@
 }
 
 /* Active Call Card */
+.active-call-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 .status-indicator {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  font-weight: 500;
+  gap: 0.75rem;
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 .status-dot {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: #dc3545;
   animation: pulse 2s infinite;
+  flex-shrink: 0;
 }
 
 .status-dot.ready {
@@ -59,75 +66,104 @@
 }
 
 .call-details {
-  margin: 1rem 0;
-  padding: 1rem;
+  padding: 1.25rem;
   background: #f8f9fa;
-  border-radius: 4px;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
 }
 
 .call-details p {
-  margin: 0.5rem 0;
-  font-size: 0.9rem;
+  margin: 0.75rem 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.call-details p:first-child {
+  margin-top: 0;
+}
+
+.call-details p:last-child {
+  margin-bottom: 0;
 }
 
 .no-active-call {
   text-align: center;
-  padding: 1rem 0;
-}
-
-/* Quick Actions */
-.quick-actions {
+  padding: 2rem 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 1.5rem;
 }
 
-.action-btn {
-  padding: 0.75rem 1rem;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s;
+.no-active-call p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 1rem;
 }
 
-.action-btn:hover:not(:disabled) {
-  background: #e9ecef;
-  transform: translateX(4px);
-}
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 /* Stats */
+.stats-card {
+  grid-column: span 2; /* Make stats card span 2 columns for more prominence */
+}
+
+.stats-card h3 {
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+  color: #495057;
+  text-align: center;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 1.5rem;
   text-align: center;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 4px;
+  padding: 2rem 1.5rem;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat:hover {
+  border-color: #667eea;
+  box-shadow: 0 6px 25px rgba(102, 126, 234, 0.15);
 }
 
 .stat-value {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 3rem;
+  font-weight: 800;
   color: #667eea;
+  margin-bottom: 0.5rem;
+  line-height: 1;
 }
 
 .stat-label {
-  font-size: 0.875rem;
-  color: #6c757d;
-  margin-top: 0.25rem;
+  font-size: 1rem;
+  color: #495057;
+  margin-top: 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Recent Calls */
@@ -142,6 +178,17 @@
   background: #f8f9fa;
   border-radius: 4px;
   border-left: 3px solid #667eea;
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.recent-call-item.clickable {
+  cursor: pointer;
+}
+
+.recent-call-item.clickable:hover {
+  background-color: #e9ecef;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .call-info {

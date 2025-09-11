@@ -31,7 +31,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="dashboard">
       <div className="dashboard-header">
-        <h2>Welcome back, {user?.name}!</h2>
+        <h2>Welcome{todaysCalls?.totalElements && todaysCalls.totalElements > 0 ? ' back' : ''}, {user?.name}!</h2>
         <p className="subtitle">DataTech Call Management Dashboard</p>
       </div>
 
@@ -75,31 +75,6 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Quick Actions Card */}
-        <div className="dashboard-card quick-actions-card">
-          <h3>Quick Actions</h3>
-          <div className="quick-actions">
-            <button
-              className="action-btn"
-              onClick={() => navigate('/start-call')}
-              disabled={!!activeCall}
-            >
-              📞 New Call
-            </button>
-            <button
-              className="action-btn"
-              onClick={() => navigate('/history')}
-            >
-              📋 View History
-            </button>
-            <button
-              className="action-btn"
-              onClick={() => navigate('/reports')}
-            >
-              📊 Generate Report
-            </button>
-          </div>
-        </div>
 
         {/* Today's Stats Card */}
         <div className="dashboard-card stats-card">
@@ -128,7 +103,11 @@ export const Dashboard: React.FC = () => {
           ) : recentCalls && recentCalls.content.length > 0 ? (
             <div className="recent-calls-list">
               {recentCalls.content.map((call) => (
-                <div key={call.id} className="recent-call-item">
+                <div 
+                  key={call.id} 
+                  className="recent-call-item clickable"
+                  onClick={() => navigate(`/edit-call/${call.id}`)}
+                >
                   <div className="call-info">
                     <span className="call-time">{formatDate(call.startTime)}</span>
                     <span className="call-duration">{formatDuration(call.durationMinutes)}</span>

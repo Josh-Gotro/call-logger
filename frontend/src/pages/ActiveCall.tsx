@@ -40,8 +40,13 @@ export const ActiveCall: React.FC = () => {
     handleSubmit,
     setValue,
     watch,
-    formState: { isDirty },
-  } = useForm<ActiveCallFormData>();
+    formState: { isDirty, errors },
+  } = useForm<ActiveCallFormData>({
+    defaultValues: {
+      isInbound: 'yes', // Default to inbound
+      isAgent: 'no',    // Default to end user (not agent)
+    }
+  });
 
   const selectedParentId = watch('programManagementParentId');
 
@@ -82,11 +87,22 @@ export const ActiveCall: React.FC = () => {
     }
   }, [callDataFromState, queriedActiveCall, isLoading, navigate, location.state?.fromStartCall]);
 
-  // Initialize form with current call data
+  // Initialize form with current call data or defaults
   useEffect(() => {
     if (activeCall) {
-      setValue('isInbound', activeCall.isInbound ? 'yes' : 'no');
-      setValue('isAgent', activeCall.isAgent ? 'yes' : 'no');
+      // Check if this is a new call (no category/subject set) - use frontend defaults
+      const isNewCall = !activeCall.category && !activeCall.subject && !activeCall.programManagement;
+      
+      if (isNewCall) {
+        // For new calls, use our preferred defaults regardless of backend values
+        setValue('isInbound', 'yes');
+        setValue('isAgent', 'no');
+      } else {
+        // For existing calls with data, use the saved values
+        setValue('isInbound', activeCall.isInbound ? 'yes' : 'no');
+        setValue('isAgent', activeCall.isAgent ? 'yes' : 'no');
+      }
+      
       setValue('comments', activeCall.comments || '');
 
       // Note: We need to find IDs from the display names
@@ -126,6 +142,10 @@ export const ActiveCall: React.FC = () => {
           }
         }
       }
+    } else {
+      // No active call - set defaults
+      setValue('isInbound', 'yes');
+      setValue('isAgent', 'no');
     }
   }, [activeCall, setValue, categories.data, subjects.data, programManagement.data]);
 
@@ -257,6 +277,7 @@ export const ActiveCall: React.FC = () => {
                     <input
                       type="radio"
                       value="yes"
+                      defaultChecked={true}
                       {...register('isInbound')}
                     />
                     <span className="toggle-label">Inbound</span>
@@ -265,6 +286,7 @@ export const ActiveCall: React.FC = () => {
                     <input
                       type="radio"
                       value="no"
+                      defaultChecked={false}
                       {...register('isInbound')}
                     />
                     <span className="toggle-label">Outbound</span>
@@ -279,6 +301,7 @@ export const ActiveCall: React.FC = () => {
                     <input
                       type="radio"
                       value="no"
+                      defaultChecked={true}
                       {...register('isAgent')}
                     />
                     <span className="toggle-label">No</span>
@@ -287,6 +310,7 @@ export const ActiveCall: React.FC = () => {
                     <input
                       type="radio"
                       value="yes"
+                      defaultChecked={false}
                       {...register('isAgent')}
                     />
                     <span className="toggle-label">Yes</span>
@@ -317,7 +341,17 @@ export const ActiveCall: React.FC = () => {
               }}>
                 <label>Sub-Department</label>
                 <select
-                  {...register('programManagementChildId')}
+                  {...register('programManagementChildId', {
+                    validate: (value) => {
+                      const selectedParent = programManagement.data?.find(p => p.id === selectedParentId);
+                      const hasChildren = selectedParent?.children && selectedParent.children.length > 0;
+                      
+                      if (hasChildren && !value) {
+                        return 'Sub-Department is required when Department has sub-departments';
+                      }
+                      return true;
+                    }
+                  })}
                   disabled={!selectedParentId || availableChildren.length === 0}
                 >
                   <option value="">Select Sub-Department</option>
@@ -327,6 +361,11 @@ export const ActiveCall: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                {errors.programManagementChildId && (
+                  <div className="error-message">
+                    {errors.programManagementChildId.message}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -383,7 +422,7 @@ export const ActiveCall: React.FC = () => {
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={!isDirty || updateCallMutation.isPending}
+              disabled={!isDirty || updateCallMutation.isPending || Object.keys(errors).length > 0}
             >
               {updateCallMutation.isPending ? 'Updating...' : 'Update Call'}
             </button>
@@ -439,7 +478,7 @@ export const ActiveCall: React.FC = () => {
                     type="button"
                     className="btn btn-danger"
                     onClick={handleEndCall}
-                    disabled={endCallMutation.isPending}
+                    disabled={endCallMutation.isPending || Object.keys(errors).length > 0}
                   >
                     {endCallMutation.isPending ? 'Ending...' : 'Confirm End Call'}
                   </button>

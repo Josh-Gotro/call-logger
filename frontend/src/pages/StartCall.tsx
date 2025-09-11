@@ -164,14 +164,6 @@ export const StartCall: React.FC = () => {
 
             <div className="form-actions">
               <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => navigate('/')}
-                disabled={isStartingCall}
-              >
-                Cancel
-              </button>
-              <button
                 type="submit"
                 className="btn btn-primary"
                 disabled={isStartingCall || startCallMutation.isPending}
