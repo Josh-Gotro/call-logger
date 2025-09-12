@@ -149,6 +149,10 @@
   background: #6c757d;
 }
 
+.mobile-nav-badge.recent {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
 /* Responsive adjustments */
 @media (max-width: 480px) {
   .mobile-nav-drawer {

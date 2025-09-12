@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useUser } from '../../contexts/UserContext';
-import { useActiveCall } from '../../hooks/useCallQueries';
+import { useActiveCall, useTodaysRecentCalls } from '../../hooks/useCallQueries';
 import './MobileNavigation.css';
 
 interface MobileNavigationProps {
@@ -12,6 +12,8 @@ interface MobileNavigationProps {
 export const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onClose }) => {
   const { user } = useUser();
   const { data: activeCall } = useActiveCall(user?.email || '', !!user);
+  const { data: recentCalls } = useTodaysRecentCalls(user?.email || '');
+  const mostRecentCall = recentCalls?.content?.[0];
 
   const baseNavItems = [
     { path: '/', label: 'Dashboard', icon: '🏠' },
@@ -20,12 +22,26 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onCl
     { path: '/reports', label: 'Reports', icon: '📊' },
   ];
 
-  // Only include Active Call item when there's an active call
-  const navItems = activeCall
+  // Determine call nav item based on active call or most recent call
+  let callNavItem = null;
+  if (activeCall) {
+    callNavItem = { path: '/active-call', label: 'Active Call', icon: '🟢' };
+  } else if (mostRecentCall) {
+    callNavItem = { 
+      path: `/edit-call/${mostRecentCall.id}`, 
+      label: 'Most Recent Call', 
+      icon: '🔴',
+      // Add stable key to prevent navigation issues
+      key: `recent-${mostRecentCall.id}`
+    };
+  }
+
+  // Include call nav item if it exists
+  const navItems = callNavItem
     ? [
         baseNavItems[0], // Dashboard
-        { path: '/active-call', label: 'Active Call', icon: '🔴' },
-        baseNavItems[1], // Start New Call (disabled)
+        callNavItem,
+        baseNavItems[1], // Start New Call
         baseNavItems[2], // Call History
         baseNavItems[3], // Reports
       ]
@@ -98,6 +114,9 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onCl
                 {item.path === '/active-call' && activeCall && (
                   <span className="mobile-nav-badge">Active</span>
                 )}
+                {item.path.startsWith('/edit-call/') && mostRecentCall && !activeCall && (
+                  <span className="mobile-nav-badge recent">Recent</span>
+                )}
                 {item.path === '/start-call' && activeCall && (
                   <span className="mobile-nav-badge disabled">In Call</span>
                 )}
@@ -138,6 +157,9 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({ isOpen, onCl
                 <span className="mobile-nav-label">{item.label}</span>
                 {item.path === '/active-call' && activeCall && (
                   <span className="mobile-nav-badge">Active</span>
+                )}
+                {item.path.startsWith('/edit-call/') && mostRecentCall && !activeCall && (
+                  <span className="mobile-nav-badge recent">Recent</span>
                 )}
                 {item.path === '/start-call' && activeCall && (
                   <span className="mobile-nav-badge disabled">In Call</span>

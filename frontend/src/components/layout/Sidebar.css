@@ -63,6 +63,10 @@
   background: #6c757d;
 }
 
+.nav-badge.recent {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
 .sidebar-footer {
   padding: 1rem;
   border-top: 1px solid #e9ecef;
