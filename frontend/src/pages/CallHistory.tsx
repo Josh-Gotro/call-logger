@@ -258,7 +258,7 @@ export const CallHistory: React.FC = () => {
               <span>Loading...</span>
             ) : (
               <span>
-                Showing {filteredCalls.length} of {callsData?.totalElements || 0} calls
+                Showing {callsData?.content?.length ? (currentPage * pageSize + 1) : 0}-{Math.min((currentPage + 1) * pageSize, callsData?.totalElements || 0)} of {callsData?.totalElements || 0} calls
               </span>
             )}
           </div>

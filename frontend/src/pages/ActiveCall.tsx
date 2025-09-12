@@ -208,7 +208,7 @@ export const ActiveCall: React.FC = () => {
     try {
       // Clear the ended call data first
       setEndedCallData(null);
-      
+
       // Reset form to defaults for new call
       reset({
         isInbound: 'yes',
@@ -254,10 +254,13 @@ export const ActiveCall: React.FC = () => {
 
   return (
     <div className="active-call-page">
-      <div className="page-header">
+      <div className={`page-header ${activeCall.endTime ? 'call-ended' : 'call-active'}`}>
         <div className="call-info">
-          <h2>Active Call Details</h2>
-          <p>Started at {formatTime(activeCall.startTime)}</p>
+          <h2>{activeCall.endTime ? 'Call Ended' : 'Active Call'}</h2>
+          <p>
+            Started at {formatTime(activeCall.startTime)}
+            {activeCall.endTime && ` • Ended at ${formatTime(activeCall.endTime)}`}
+          </p>
         </div>
       </div>
 
@@ -384,7 +387,7 @@ export const ActiveCall: React.FC = () => {
             </div>
             <div className="call-timer-display">
               <span className="timer-label">Duration:</span>
-              <span className="timer-value">{liveDuration}</span>
+              <span className={`timer-value ${activeCall.endTime ? 'ended' : ''}`}>{liveDuration}</span>
             </div>
           </div>
 

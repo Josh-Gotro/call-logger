@@ -83,6 +83,38 @@
   color: #6c757d;
 }
 
+/* Styling for active calls */
+.page-header.call-active {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+}
+
+.page-header.call-active .call-info h2 {
+  color: #155724;
+  font-weight: 600;
+}
+
+.page-header.call-active .call-info p {
+  color: #155724;
+  font-weight: 500;
+}
+
+/* Styling for ended calls */
+.page-header.call-ended {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+}
+
+.page-header.call-ended .call-info h2 {
+  color: #721c24;
+  font-weight: 600;
+}
+
+.page-header.call-ended .call-info p {
+  color: #721c24;
+  font-weight: 500;
+}
+
 .active-call-container {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -338,6 +370,10 @@
   font-weight: 700;
   color: #28a745;
   font-size: 2rem;
+}
+
+.call-status-card .timer-value.ended {
+  color: #6c757d; /* Neutral gray color matching button text */
 }
 
 .call-status-card .call-details {
