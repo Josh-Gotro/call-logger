@@ -10,38 +10,43 @@ interface HeaderProps {
   onToggleMobileMenu: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ 
-  isMobile, 
-  isMobileMenuOpen, 
-  onToggleMobileMenu 
+export const Header: React.FC<HeaderProps> = ({
+  isMobile,
+  isMobileMenuOpen,
+  onToggleMobileMenu
 }) => {
   const { user, logout } = useUser();
   const { data: activeCall } = useActiveCall(user?.email || '', !!user);
   const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null);
 
-  const formatDuration = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
-    return `${mins}m`;
-  };
 
   return (
     <header className="app-header">
       <div className="header-left">
         {isMobile && (
-          <button 
-            className="hamburger-btn"
-            onClick={onToggleMobileMenu}
-            aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            aria-expanded={isMobileMenuOpen}
-          >
-            <span className="hamburger-line"></span>
-            <span className="hamburger-line"></span>
-            <span className="hamburger-line"></span>
-          </button>
+          isMobileMenuOpen ? (
+            <button
+              className="hamburger-btn"
+              onClick={onToggleMobileMenu}
+              aria-label="Close navigation menu"
+              aria-expanded="true"
+            >
+              <span className="hamburger-line"></span>
+              <span className="hamburger-line"></span>
+              <span className="hamburger-line"></span>
+            </button>
+          ) : (
+            <button
+              className="hamburger-btn"
+              onClick={onToggleMobileMenu}
+              aria-label="Open navigation menu"
+              aria-expanded="false"
+            >
+              <span className="hamburger-line"></span>
+              <span className="hamburger-line"></span>
+              <span className="hamburger-line"></span>
+            </button>
+          )
         )}
         <h1 className="app-title">DataTech Call Logger</h1>
         {activeCall && (
