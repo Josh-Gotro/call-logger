@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useCall, useUpdateCall } from '../hooks/useCallQueries';
 import { useAllReferenceData } from '../hooks/useReferenceQueries';
 import { UpdateCallRequest } from '../types/api.types';
+import { SearchableSelect } from '../components/forms/SearchableSelect';
 import './EditCall.css';
 
 interface EditCallFormData {
@@ -291,27 +292,34 @@ export const EditCall: React.FC = () => {
             
             <div className="form-row">
               <div className="form-group">
-                <label>Task</label>
-                <select {...register('taskId')}>
-                  <option value="">Select Task</option>
-                  {tasks.data?.map((task) => (
-                    <option key={task.id} value={task.id}>
-                      {task.name}
-                    </option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  name="taskId"
+                  label="Task"
+                  placeholder="Search and select task"
+                  options={tasks.data || []}
+                  value={watch('taskId')}
+                  register={register}
+                  setValue={setValue}
+                  onSelectionChange={(value, option) => {
+                    // Clear subject when task changes to one without subjects
+                    if (option && !option.hasSubjects) {
+                      setValue('subjectId', '');
+                    }
+                  }}
+                />
               </div>
 
               <div className="form-group" style={{ visibility: selectedTaskHasSubjects ? 'visible' : 'hidden' }}>
-                <label>Subject</label>
-                <select {...register('subjectId')} disabled={!selectedTaskHasSubjects}>
-                  <option value="">Select Subject</option>
-                  {availableSubjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  name="subjectId"
+                  label="Subject"
+                  placeholder="Search and select subject"
+                  options={availableSubjects}
+                  value={watch('subjectId')}
+                  disabled={!selectedTaskHasSubjects}
+                  register={register}
+                  setValue={setValue}
+                />
               </div>
             </div>
           </div>

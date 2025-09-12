@@ -5,7 +5,8 @@ import { useUser } from '../contexts/UserContext';
 import { useActiveCall, useUpdateCall, useEndCall, useStartCall } from '../hooks/useCallQueries';
 import { useAllReferenceData } from '../hooks/useReferenceQueries';
 import { useLiveDuration } from '../hooks/useLiveDuration';
-import { UpdateCallRequest } from '../types/api.types';
+import { UpdateCallRequest, CallEntry } from '../types/api.types';
+import { SearchableSelect } from '../components/forms/SearchableSelect';
 import './ActiveCall.css';
 
 interface ActiveCallFormData {
@@ -20,14 +21,15 @@ export const ActiveCall: React.FC = () => {
   const location = useLocation();
   const { user } = useUser();
   const [showEndConfirm, setShowEndConfirm] = useState(false);
-  const [endedCallData, setEndedCallData] = useState(null);
+  // Store ended call locally after ending so UI can still display details
+  const [endedCallData, setEndedCallData] = useState<CallEntry | null>(null);
 
   // Use call data from navigation state if available, otherwise from query
-  const callDataFromState = location.state?.callData;
+  const callDataFromState = location.state?.callData as CallEntry | undefined;
   const { data: queriedActiveCall, isLoading } = useActiveCall(user?.email || '', !!user);
-  
+
   // Priority order: ended call data (local state), navigation state, query data
-  const activeCall = endedCallData || callDataFromState || queriedActiveCall;
+  const activeCall: CallEntry | null = endedCallData || callDataFromState || queriedActiveCall || null;
 
 
   const { tasks, subjects } = useAllReferenceData();
@@ -190,7 +192,7 @@ export const ActiveCall: React.FC = () => {
 
       // Then end the call
       const endedCall = await endCallMutation.mutateAsync(activeCall.id);
-      
+
       // Update local state to show ended call immediately
       setEndedCallData(endedCall);
       setShowEndConfirm(false);
@@ -207,12 +209,12 @@ export const ActiveCall: React.FC = () => {
         datatechName: user.name,
         datatechEmail: user.email,
       });
-      
+
       // Navigate to the active call page with the new call data
       navigate('/active-call', {
-        state: { 
+        state: {
           callData: newCall,
-          fromStartCall: true 
+          fromStartCall: true
         },
         replace: true
       });
@@ -305,27 +307,34 @@ export const ActiveCall: React.FC = () => {
 
             <div className="form-row">
               <div className="form-group">
-                <label>Task</label>
-                <select {...register('taskId')}>
-                  <option value="">Select Task</option>
-                  {tasks.data?.map((task) => (
-                    <option key={task.id} value={task.id}>
-                      {task.name}
-                    </option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  name="taskId"
+                  label="Task"
+                  placeholder="Search and select task"
+                  options={tasks.data || []}
+                  value={watch('taskId')}
+                  register={register}
+                  setValue={setValue}
+                  onSelectionChange={(value, option) => {
+                    // Clear subject when task changes to one without subjects
+                    if (option && !option.hasSubjects) {
+                      setValue('subjectId', '');
+                    }
+                  }}
+                />
               </div>
 
               <div className="form-group" style={{ visibility: selectedTaskHasSubjects ? 'visible' : 'hidden' }}>
-                <label>Subject</label>
-                <select {...register('subjectId')} disabled={!selectedTaskHasSubjects}>
-                  <option value="">Select Subject</option>
-                  {availableSubjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  name="subjectId"
+                  label="Subject"
+                  placeholder="Search and select subject"
+                  options={availableSubjects}
+                  value={watch('subjectId')}
+                  disabled={!selectedTaskHasSubjects}
+                  register={register}
+                  setValue={setValue}
+                />
               </div>
             </div>
           </div>
@@ -405,7 +414,7 @@ export const ActiveCall: React.FC = () => {
             <div className="sidebar-card start-new-call-section">
               <h4>Start New Call</h4>
               <p>This call is complete. Ready to start a new call?</p>
-              
+
               <button
                 type="button"
                 className="btn btn-primary"

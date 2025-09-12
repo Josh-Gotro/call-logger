@@ -5,6 +5,14 @@ import { useActiveCall, useTodaysRecentCalls } from '../../hooks/useCallQueries'
 import { useLiveDuration } from '../../hooks/useLiveDuration';
 import './Sidebar.css';
 
+// Unified navigation item type to avoid widened union types where 'disabled' becomes non-existent
+interface NavItem {
+  path: string;
+  label: string;
+  icon: string;
+  disabled?: boolean;
+}
+
 export const Sidebar: React.FC = () => {
   const { user } = useUser();
   const { data: activeCall } = useActiveCall(user?.email || '', !!user);
@@ -12,7 +20,7 @@ export const Sidebar: React.FC = () => {
   const mostRecentCall = recentCalls?.content?.[0];
   const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null);
 
-  const baseNavItems = [
+  const baseNavItems: NavItem[] = [
     { path: '/', label: 'Dashboard', icon: '🏠' },
     { path: '/start-call', label: 'Start New Call', icon: '📞', disabled: !!activeCall },
     { path: '/history', label: 'Call History', icon: '📋' },
@@ -20,21 +28,19 @@ export const Sidebar: React.FC = () => {
   ];
 
   // Determine call nav item based on active call or most recent call
-  let callNavItem = null;
+  let callNavItem: NavItem | null = null;
   if (activeCall) {
     callNavItem = { path: '/active-call', label: 'Active Call', icon: '🟢' };
   } else if (mostRecentCall) {
-    callNavItem = { 
-      path: `/edit-call/${mostRecentCall.id}`, 
-      label: 'Most Recent Call', 
-      icon: '🔴',
-      // Add stable key to prevent navigation issues
-      key: `recent-${mostRecentCall.id}`
+    callNavItem = {
+      path: `/edit-call/${mostRecentCall.id}`,
+      label: 'Most Recent Call',
+      icon: '🔴'
     };
   }
 
   // Include call nav item if it exists
-  const navItems = callNavItem
+  const navItems: NavItem[] = callNavItem
     ? [
         baseNavItems[0], // Dashboard
         callNavItem,
