@@ -87,7 +87,7 @@ export const Reports: React.FC = () => {
     name: task.name
   }));
 
-  const categories = subjects.map(subject => ({
+  const subjectOptions = subjects.map(subject => ({
     id: subject.id,
     name: subject.name
   }));
@@ -185,12 +185,12 @@ export const Reports: React.FC = () => {
 
   const handleFilterChange = (key: keyof ReportFilters, value: any) => {
     let processedValue = value === '' ? undefined : value;
-    
+
     // Convert string boolean values to actual booleans for isAgent and isInbound
     if ((key === 'isAgent' || key === 'isInbound') && processedValue !== undefined) {
       processedValue = processedValue === 'true' ? true : processedValue === 'false' ? false : processedValue;
     }
-    
+
     setFilters(prev => ({
       ...prev,
       [key]: processedValue
@@ -313,9 +313,8 @@ export const Reports: React.FC = () => {
             </select>
           </div>
 
-          {/* Department Filter */}
+          {/* Task Filter */}
           <div className="filter-group">
-            <label>Task</label>
             <label htmlFor="department-select">Task</label>
             <select
               id="department-select"
@@ -334,19 +333,19 @@ export const Reports: React.FC = () => {
 
           {/* Note: Sub-tasks not supported in Task-Subject model */}
 
-          {/* Category Filter */}
+          {/* Subject Filter */}
           <div className="filter-group">
-            <label>Category</label>
+            <label>Subject</label>
             <select
               value={filters.subjectId || ''}
               onChange={(e) => handleFilterChange('subjectId', e.target.value)}
               className="form-input"
-              title="Select a category"
+              title="Select a subject"
             >
-              <option value="">All Categories</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
+              <option value="">All Subjects</option>
+              {subjectOptions.map(subject => (
+                <option key={subject.id} value={subject.id}>
+                  {subject.name}
                 </option>
               ))}
             </select>
