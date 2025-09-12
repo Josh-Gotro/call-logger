@@ -107,11 +107,93 @@
   background-color: #bbdefb;
 }
 
+/* Highlighted option (keyboard navigation) */
+.searchable-select-option.highlighted {
+  background-color: #f0f8ff;
+  border-left: 3px solid #667eea;
+}
+
+/* Predicted option (best match) */
+.searchable-select-option.predicted {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  position: relative;
+}
+
+.searchable-select-option.predicted:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+/* Match type indicators */
+.searchable-select-option.match-exact {
+  border-left: 3px solid #28a745;
+}
+
+.searchable-select-option.match-prefix {
+  border-left: 3px solid #007bff;
+}
+
+.searchable-select-option.match-contains {
+  border-left: 3px solid #ffc107;
+}
+
+.searchable-select-option.match-fuzzy {
+  border-left: 3px solid #6c757d;
+}
+
+/* Override border for predicted items */
+.searchable-select-option.predicted {
+  border-left: none;
+}
+
+/* Note: All options have normal opacity when no search term is active */
+
+/* Text highlighting */
+.match-highlight {
+  background: #fff3cd;
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+/* Prediction indicator */
+.prediction-indicator {
+  float: right;
+  opacity: 0.8;
+  font-size: 0.9em;
+  margin-left: 8px;
+}
+
+.searchable-select-option.predicted .prediction-indicator {
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .searchable-select-no-options {
   padding: 0.75rem;
   color: #6c757d;
   font-style: italic;
   text-align: center;
+}
+
+/* Smooth transitions */
+.searchable-select-option {
+  transition: all 0.15s ease;
+}
+
+.searchable-select-dropdown {
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Ensure dropdown appears above other elements */
@@ -121,4 +203,24 @@
 
 .searchable-select.open {
   z-index: 1001;
+}
+
+/* Focus state improvements */
+.searchable-select-input:focus + .searchable-select-arrow .arrow {
+  color: #667eea;
+}
+
+/* Accessibility improvements */
+.searchable-select-option[aria-selected="true"] {
+  background-color: #f0f8ff;
+}
+
+/* Better visual hierarchy for multiple states */
+.searchable-select-option.highlighted.selected {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-left-color: #1976d2;
+}
+
+.searchable-select-option.predicted.selected {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
 }
