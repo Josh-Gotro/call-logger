@@ -43,6 +43,7 @@ export const ActiveCall: React.FC = () => {
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { isDirty, errors },
   } = useForm<ActiveCallFormData>({
     defaultValues: {
@@ -205,6 +206,17 @@ export const ActiveCall: React.FC = () => {
     if (!user?.email || !user?.name) return;
 
     try {
+      // Clear the ended call data first
+      setEndedCallData(null);
+      
+      // Reset form to defaults for new call
+      reset({
+        isInbound: 'yes',
+        isAgent: 'no',
+        taskId: '',
+        subjectId: ''
+      });
+
       const newCall = await startCallMutation.mutateAsync({
         datatechName: user.name,
         datatechEmail: user.email,
@@ -220,6 +232,9 @@ export const ActiveCall: React.FC = () => {
       });
     } catch (error) {
       console.error('Failed to start new call:', error);
+      // If there's an error (like active call exists), clear the ended call data anyway
+      // so the UI reflects the current state
+      setEndedCallData(null);
     }
   };
 

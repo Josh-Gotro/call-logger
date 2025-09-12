@@ -18,7 +18,7 @@ export const Sidebar: React.FC = () => {
   const { data: activeCall } = useActiveCall(user?.email || '', !!user);
   const { data: recentCalls } = useTodaysRecentCalls(user?.email || '');
   const mostRecentCall = recentCalls?.content?.[0];
-  const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null);
+  const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null, activeCall?.endTime || null);
 
   const baseNavItems: NavItem[] = [
     { path: '/', label: 'Dashboard', icon: '🏠' },
