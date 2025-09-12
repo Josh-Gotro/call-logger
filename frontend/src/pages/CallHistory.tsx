@@ -9,7 +9,7 @@ import './CallHistory.css';
 interface CallFilters {
   startDate: string;
   endDate: string;
-  categoryId: string;
+  taskId: string;
   subjectId: string;
   status: 'all' | 'completed' | 'in-progress';
 }
@@ -25,12 +25,12 @@ export const CallHistory: React.FC = () => {
   const [filters, setFilters] = useState<CallFilters>({
     startDate: '',
     endDate: '',
-    categoryId: '',
+    taskId: '',
     subjectId: '',
     status: 'all',
   });
 
-  const { categories, subjects } = useAllReferenceData();
+  const { tasks, subjects } = useAllReferenceData();
 
   // Prepare filter parameters for API call
   const apiFilters = useMemo(() => {
@@ -43,7 +43,8 @@ export const CallHistory: React.FC = () => {
 
     if (filters.startDate) result.startDate = filters.startDate + 'T00:00:00Z';
     if (filters.endDate) result.endDate = filters.endDate + 'T23:59:59Z';
-    if (filters.categoryId) result.categoryId = filters.categoryId;
+    if (filters.taskId) result.taskId = filters.taskId;
+    if (filters.subjectId) result.subjectId = filters.subjectId;
 
     return result;
   }, [user?.email, currentPage, pageSize, sortBy, filters]);
@@ -102,7 +103,7 @@ export const CallHistory: React.FC = () => {
     setFilters({
       startDate: '',
       endDate: '',
-      categoryId: '',
+      taskId: '',
       subjectId: '',
       status: 'all',
     });
@@ -200,16 +201,16 @@ export const CallHistory: React.FC = () => {
               />
             </div>
             <div className="filter-group">
-              <label>Category</label>
+              <label>Task</label>
               <select
-                value={filters.categoryId}
-                onChange={(e) => handleFilterChange('categoryId', e.target.value)}
-                title="Category"
+                value={filters.taskId}
+                onChange={(e) => handleFilterChange('taskId', e.target.value)}
+                title="Task"
               >
-                <option value="">All Categories</option>
-                {categories.data?.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
+                <option value="">All Tasks</option>
+                {tasks.data?.map((task) => (
+                  <option key={task.id} value={task.id}>
+                    {task.name}
                   </option>
                 ))}
               </select>
@@ -303,12 +304,6 @@ export const CallHistory: React.FC = () => {
                 : "You haven't made any calls yet."
               }
             </p>
-            <button
-              className="btn btn-primary"
-              onClick={() => navigate('/start-call')}
-            >
-              Start Your First Call
-            </button>
           </div>
         ) : (
           <>

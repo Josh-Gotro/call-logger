@@ -1,6 +1,6 @@
 package com.wai.callform.entity;
 
-import com.wai.callform.validation.ValidProgramManagementHierarchy;
+// import com.wai.callform.validation.ValidProgramManagementHierarchy; // Old validation - removed
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
@@ -19,7 +19,7 @@ import java.util.UUID;
 @Data
 @EqualsAndHashCode(of = "id")
 @EntityListeners(AuditingEntityListener.class)
-// @ValidProgramManagementHierarchy // Temporarily disabled to fix auditing issue
+// Task-Subject validation will be handled at service layer
 public class CallEntry {
 
     @Id
@@ -53,22 +53,14 @@ public class CallEntry {
     @Column(name = "is_agent", nullable = false)
     private Boolean isAgent = false;
 
-    // Foreign key relationships to reference tables
+    // Foreign key relationships to new task/subject tables
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "program_management_parent_id")
-    private ProgramManagementItem programManagementParent;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "program_management_child_id")
-    private ProgramManagementItem programManagementChild;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private CategoryItem category;
+    @JoinColumn(name = "task_id")
+    private TaskEntity task;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id")
-    private SubjectItem subject;
+    private SubjectEntity subject;
 
     @Column(name = "comments", columnDefinition = "TEXT")
     private String comments;
@@ -81,28 +73,29 @@ public class CallEntry {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    // Hierarchical program management validation
-    public boolean hasValidProgramManagementHierarchy() {
-        // If child is selected, parent must also be selected
-        if (programManagementChild != null && programManagementParent == null) {
+    // Task-Subject validation
+    public boolean hasValidTaskSubjectRelationship() {
+        // If subject is selected, task must also be selected
+        if (subject != null && task == null) {
             return false;
         }
-        // If child is selected, it must actually be a child of the selected parent
-        if (programManagementChild != null && programManagementParent != null) {
-            return programManagementChild.getParent() != null && 
-                   programManagementChild.getParent().getId().equals(programManagementParent.getId());
-        }
+        // If both are selected, subject must be valid for the task
+        // This validation will be performed at the service layer
         return true;
     }
 
-    public String getProgramManagementDisplay() {
-        if (programManagementParent == null) {
+    public String getTaskDisplay() {
+        if (task == null) {
             return null;
         }
-        if (programManagementChild != null) {
-            return programManagementParent.getName() + " > " + programManagementChild.getName();
+        if (subject != null) {
+            return task.getName() + " - " + subject.getName();
         }
-        return programManagementParent.getName();
+        return task.getName();
+    }
+
+    public String getTaskSubjectDisplay() {
+        return getTaskDisplay();
     }
 
     // Business logic methods

@@ -47,10 +47,13 @@ export const queryKeys = {
   },
   reference: {
     all: ['reference'] as const,
-    programManagement: () => [...queryKeys.reference.all, 'programManagement'] as const,
-    programManagementHierarchy: () => [...queryKeys.reference.all, 'programManagementHierarchy'] as const,
-    categories: () => [...queryKeys.reference.all, 'categories'] as const,
+    tasks: () => [...queryKeys.reference.all, 'tasks'] as const,
     subjects: () => [...queryKeys.reference.all, 'subjects'] as const,
+    taskSubjectSummary: () => [...queryKeys.reference.all, 'taskSubjectSummary'] as const,
+    // Legacy keys for backward compatibility
+    programManagement: () => [...queryKeys.reference.all, 'tasks'] as const, // Map to tasks
+    programManagementHierarchy: () => [...queryKeys.reference.all, 'tasks'] as const, // Map to tasks
+    categories: () => [...queryKeys.reference.all, 'subjects'] as const, // Map to subjects
   },
   reports: {
     all: ['reports'] as const,

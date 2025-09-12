@@ -4,13 +4,11 @@ import com.wai.callform.dto.CallEntryDto;
 import com.wai.callform.dto.StartCallRequest;
 import com.wai.callform.dto.UpdateCallRequest;
 import com.wai.callform.entity.CallEntry;
-import com.wai.callform.entity.CategoryItem;
-import com.wai.callform.entity.ProgramManagementItem;
-import com.wai.callform.entity.SubjectItem;
+import com.wai.callform.entity.TaskEntity;
+import com.wai.callform.entity.SubjectEntity;
 import com.wai.callform.repository.CallEntryRepository;
-import com.wai.callform.repository.CategoryItemRepository;
-import com.wai.callform.repository.ProgramManagementItemRepository;
-import com.wai.callform.repository.SubjectItemRepository;
+import com.wai.callform.repository.TaskEntityRepository;
+import com.wai.callform.repository.SubjectEntityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,9 +28,9 @@ import java.util.UUID;
 public class CallEntryService {
 
     private final CallEntryRepository callEntryRepository;
-    private final CategoryItemRepository categoryItemRepository;
-    private final SubjectItemRepository subjectItemRepository;
-    private final ProgramManagementItemRepository programManagementItemRepository;
+    private final TaskEntityRepository taskEntityRepository;
+    private final SubjectEntityRepository subjectEntityRepository;
+    private final TaskSubjectService taskSubjectService;
 
     /**
      * Start a new call for the specified user
@@ -112,58 +110,26 @@ public class CallEntryService {
             callEntry.setComments(request.getComments());
         }
         
-        // Update reference fields using IDs
-        if (request.getProgramManagementParentId() != null && !request.getProgramManagementParentId().isEmpty()) {
-            try {
-                UUID parentId = UUID.fromString(request.getProgramManagementParentId());
-                ProgramManagementItem parent = programManagementItemRepository.findById(parentId)
-                    .orElseThrow(() -> new IllegalArgumentException("Program Management Parent not found: " + parentId));
-                callEntry.setProgramManagementParent(parent);
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid Program Management Parent ID: {}", request.getProgramManagementParentId());
-                throw new IllegalArgumentException("Invalid Program Management Parent ID");
-            }
+        // Update Task and Subject using new model
+        if (request.getTaskId() != null) {
+            TaskEntity task = taskEntityRepository.findById(request.getTaskId())
+                .orElseThrow(() -> new IllegalArgumentException("Task not found: " + request.getTaskId()));
+            callEntry.setTask(task);
         } else {
-            callEntry.setProgramManagementParent(null);
+            callEntry.setTask(null);
         }
         
-        if (request.getProgramManagementChildId() != null && !request.getProgramManagementChildId().isEmpty()) {
-            try {
-                UUID childId = UUID.fromString(request.getProgramManagementChildId());
-                ProgramManagementItem child = programManagementItemRepository.findById(childId)
-                    .orElseThrow(() -> new IllegalArgumentException("Program Management Child not found: " + childId));
-                callEntry.setProgramManagementChild(child);
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid Program Management Child ID: {}", request.getProgramManagementChildId());
-                throw new IllegalArgumentException("Invalid Program Management Child ID");
-            }
-        } else {
-            callEntry.setProgramManagementChild(null);
-        }
-        
-        if (request.getCategoryId() != null && !request.getCategoryId().isEmpty()) {
-            try {
-                UUID categoryId = UUID.fromString(request.getCategoryId());
-                CategoryItem category = categoryItemRepository.findById(categoryId)
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found: " + categoryId));
-                callEntry.setCategory(category);
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid Category ID: {}", request.getCategoryId());
-                throw new IllegalArgumentException("Invalid Category ID");
-            }
-        } else {
-            callEntry.setCategory(null);
-        }
-        
-        if (request.getSubjectId() != null && !request.getSubjectId().isEmpty()) {
-            try {
-                UUID subjectId = UUID.fromString(request.getSubjectId());
-                SubjectItem subject = subjectItemRepository.findById(subjectId)
-                    .orElseThrow(() -> new IllegalArgumentException("Subject not found: " + subjectId));
-                callEntry.setSubject(subject);
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid Subject ID: {}", request.getSubjectId());
-                throw new IllegalArgumentException("Invalid Subject ID");
+        if (request.getSubjectId() != null) {
+            SubjectEntity subject = subjectEntityRepository.findById(request.getSubjectId())
+                .orElseThrow(() -> new IllegalArgumentException("Subject not found: " + request.getSubjectId()));
+            callEntry.setSubject(subject);
+            
+            // Validate that the subject is valid for the selected task
+            if (callEntry.getTask() != null) {
+                boolean isValid = taskSubjectService.isSubjectValidForTask(callEntry.getTask().getId(), subject.getId());
+                if (!isValid) {
+                    throw new IllegalArgumentException("Subject is not valid for the selected task");
+                }
             }
         } else {
             callEntry.setSubject(null);
@@ -214,25 +180,55 @@ public class CallEntryService {
      * Get calls with filters for reporting
      */
     public Page<CallEntryDto> getCallsWithFilters(String userEmail,
-            UUID programParentId,
-            UUID categoryId,
+            UUID taskId,
+            UUID subjectId,
             OffsetDateTime startDate,
             OffsetDateTime endDate,
             Pageable pageable) {
         
-        // Use different repository methods based on whether date filtering is needed
-        if (startDate != null && endDate != null && userEmail != null) {
-            return callEntryRepository.findByDatatechEmailAndStartTimeBetween(
-                userEmail, startDate, endDate, pageable)
-                .map(this::mapToDto);
+        // Simple fallback filtering logic - build filters step by step
+        Page<CallEntry> result;
+        
+        if (userEmail != null && startDate != null && endDate != null) {
+            // User + date range filtering
+            result = callEntryRepository.findByDatatechEmailAndStartTimeBetween(userEmail, startDate, endDate, pageable);
         } else if (userEmail != null) {
-            return callEntryRepository.findByDatatechEmail(userEmail, pageable)
-                .map(this::mapToDto);
+            // User filtering only
+            result = callEntryRepository.findByDatatechEmail(userEmail, pageable);
+        } else if (startDate != null && endDate != null) {
+            // Date range only
+            result = callEntryRepository.findByDateRange(startDate, endDate, pageable);
         } else {
-            // Fallback to all calls with pagination
-            return callEntryRepository.findAll(pageable)
-                .map(this::mapToDto);
+            // No filtering - return all with pagination
+            result = callEntryRepository.findAll(pageable);
         }
+        
+        // Convert to DTOs first
+        List<CallEntryDto> allDtos = result.getContent().stream()
+                .map(this::mapToDto)
+                .collect(java.util.stream.Collectors.toList());
+        
+        // Apply task and subject filtering in-memory
+        List<CallEntryDto> filteredDtos = allDtos.stream()
+                .filter(dto -> {
+                    // Filter by taskId
+                    boolean matchesTask = taskId == null || 
+                        (dto.getTaskId() != null && dto.getTaskId().equals(taskId));
+                    
+                    // Filter by subjectId  
+                    boolean matchesSubject = subjectId == null || 
+                        (dto.getSubjectId() != null && dto.getSubjectId().equals(subjectId));
+                    
+                    return matchesTask && matchesSubject;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        
+        // Create new Page with filtered results
+        return new org.springframework.data.domain.PageImpl<>(
+            filteredDtos, 
+            pageable, 
+            filteredDtos.size()
+        );
     }
 
     // Note: Distinct values for dropdowns are now handled by ReferenceDataService
@@ -269,9 +265,11 @@ public class CallEntryService {
         dto.setStartTime(entity.getStartTime());
         dto.setEndTime(entity.getEndTime());
         dto.setIsInbound(entity.getIsInbound());
-        dto.setProgramManagement(entity.getProgramManagementDisplay());
-        dto.setCategory(entity.getCategory() != null ? entity.getCategory().getName() : null);
-        dto.setSubject(entity.getSubject() != null ? entity.getSubject().getName() : null);
+        dto.setTaskId(entity.getTask() != null ? entity.getTask().getId() : null);
+        dto.setTaskName(entity.getTask() != null ? entity.getTask().getName() : null);
+        dto.setSubjectId(entity.getSubject() != null ? entity.getSubject().getId() : null);
+        dto.setSubjectName(entity.getSubject() != null ? entity.getSubject().getName() : null);
+        dto.setTaskSubjectDisplay(entity.getTaskSubjectDisplay());
         dto.setIsAgent(entity.getIsAgent());
         dto.setComments(entity.getComments());
         dto.setCreatedAt(entity.getCreatedAt());

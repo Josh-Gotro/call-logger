@@ -2,123 +2,95 @@ import { useQuery } from '@tanstack/react-query';
 import { referenceApi } from '../api/reference.api';
 import { queryKeys } from '../lib/query-client';
 
-// Query Hooks for Reference Data
+// Query Hooks for Task-Subject Reference Data
 // These have longer cache times since reference data changes infrequently
 
-// Get program management hierarchy
-export const useProgramManagementHierarchy = () => {
+// Get all tasks with their subjects
+export const useTasks = () => {
   return useQuery({
-    queryKey: queryKeys.reference.programManagementHierarchy(),
-    queryFn: referenceApi.getProgramManagementHierarchy,
+    queryKey: queryKeys.reference.tasks(),
+    queryFn: referenceApi.getAllTasks,
     staleTime: 30 * 60 * 1000, // 30 minutes
     gcTime: 60 * 60 * 1000, // 1 hour cache
   });
 };
 
-// Get all program management items (flat list)
-export const useProgramManagementItems = () => {
+// Get specific task with its subjects
+export const useTask = (taskId: string, enabled = true) => {
   return useQuery({
-    queryKey: queryKeys.reference.programManagement(),
-    queryFn: referenceApi.getAllProgramManagementItems,
+    queryKey: [...queryKeys.reference.tasks(), taskId],
+    queryFn: () => referenceApi.getTaskById(taskId),
+    enabled: enabled && !!taskId,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
   });
 };
 
-// Get program management children for a specific parent
-export const useProgramManagementChildren = (parentId: string, enabled = true) => {
+// Get subjects for a specific task
+export const useSubjectsForTask = (taskId: string, enabled = true) => {
   return useQuery({
-    queryKey: [...queryKeys.reference.programManagement(), 'children', parentId],
-    queryFn: () => referenceApi.getProgramManagementChildren(parentId),
-    enabled: enabled && !!parentId,
+    queryKey: [...queryKeys.reference.tasks(), taskId, 'subjects'],
+    queryFn: () => referenceApi.getSubjectsForTask(taskId),
+    enabled: enabled && !!taskId,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
   });
 };
 
-// Search program management items
-export const useSearchProgramManagement = (query: string, enabled = true) => {
-  return useQuery({
-    queryKey: [...queryKeys.reference.programManagement(), 'search', query],
-    queryFn: () => referenceApi.searchProgramManagement(query),
-    enabled: enabled && !!query && query.length >= 2,
-    staleTime: 5 * 60 * 1000, // Shorter cache for search results
-  });
-};
-
-// Get all categories
-export const useCategories = () => {
-  return useQuery({
-    queryKey: queryKeys.reference.categories(),
-    queryFn: referenceApi.getCategories,
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-  });
-};
-
-// Get specific category
-export const useCategory = (id: string, enabled = true) => {
-  return useQuery({
-    queryKey: [...queryKeys.reference.categories(), id],
-    queryFn: () => referenceApi.getCategory(id),
-    enabled: enabled && !!id,
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-  });
-};
-
-// Search categories
-export const useSearchCategories = (query: string, enabled = true) => {
-  return useQuery({
-    queryKey: [...queryKeys.reference.categories(), 'search', query],
-    queryFn: () => referenceApi.searchCategories(query),
-    enabled: enabled && !!query && query.length >= 2,
-    staleTime: 5 * 60 * 1000,
-  });
-};
-
-// Get all subjects
+// Get all subjects with their assigned tasks
 export const useSubjects = () => {
   return useQuery({
     queryKey: queryKeys.reference.subjects(),
-    queryFn: referenceApi.getSubjects,
+    queryFn: referenceApi.getAllSubjects,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
   });
 };
 
-// Get specific subject
-export const useSubject = (id: string, enabled = true) => {
+// Validate task-subject relationship
+export const useValidateTaskSubject = (taskId: string, subjectId: string, enabled = true) => {
   return useQuery({
-    queryKey: [...queryKeys.reference.subjects(), id],
-    queryFn: () => referenceApi.getSubject(id),
-    enabled: enabled && !!id,
+    queryKey: ['taskSubjectValidation', taskId, subjectId],
+    queryFn: () => referenceApi.validateTaskSubjectRelationship(taskId, subjectId),
+    enabled: enabled && !!taskId && !!subjectId,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
   });
 };
 
-// Search subjects
-export const useSearchSubjects = (query: string, enabled = true) => {
+// Get task-subject summary for dashboard/overview
+export const useTaskSubjectSummary = () => {
   return useQuery({
-    queryKey: [...queryKeys.reference.subjects(), 'search', query],
-    queryFn: () => referenceApi.searchSubjects(query),
-    enabled: enabled && !!query && query.length >= 2,
-    staleTime: 5 * 60 * 1000,
+    queryKey: queryKeys.reference.taskSubjectSummary(),
+    queryFn: referenceApi.getTaskSubjectSummary,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   });
 };
 
 // Convenience hook to load all reference data at once
 export const useAllReferenceData = () => {
-  const programManagement = useProgramManagementHierarchy();
-  const categories = useCategories();
+  const tasks = useTasks();
   const subjects = useSubjects();
+  const summary = useTaskSubjectSummary();
 
   return {
-    programManagement,
-    categories,
+    tasks,
     subjects,
-    isLoading: programManagement.isLoading || categories.isLoading || subjects.isLoading,
-    isError: programManagement.isError || categories.isError || subjects.isError,
+    summary,
+    isLoading: tasks.isLoading || subjects.isLoading || summary.isLoading,
+    isError: tasks.isError || subjects.isError || summary.isError,
   };
 };
+
+// Legacy compatibility hooks (for gradual migration)
+// These map old function names to new task-subject equivalents
+
+/** @deprecated Use useTasks instead */
+export const useProgramManagementHierarchy = useTasks;
+
+/** @deprecated Use useTasks instead */
+export const useProgramManagementItems = useTasks;
+
+/** @deprecated Use useSubjects instead */
+export const useCategories = useSubjects;

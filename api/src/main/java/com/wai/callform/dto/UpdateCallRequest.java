@@ -9,13 +9,9 @@ public class UpdateCallRequest {
     
     private Boolean isInbound;
 
-    private String programManagementParentId;
-    
-    private String programManagementChildId;
+    private UUID taskId;
 
-    private String categoryId;
-
-    private String subjectId;
+    private UUID subjectId;
 
     private Boolean isAgent;
 

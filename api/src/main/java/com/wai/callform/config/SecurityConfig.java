@@ -11,7 +11,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
-@Profile("dev")
 public class SecurityConfig {
 
     @Autowired
@@ -23,6 +22,9 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.disable())
+            .httpBasic(basic -> basic.disable())
+            .formLogin(form -> form.disable())
             .authorizeHttpRequests(authz -> authz
                 .anyRequest().permitAll()
             );

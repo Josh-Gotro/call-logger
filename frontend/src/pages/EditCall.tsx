@@ -8,9 +8,7 @@ import './EditCall.css';
 
 interface EditCallFormData {
   isInbound: string;
-  programManagementParentId: string;
-  programManagementChildId: string;
-  categoryId: string;
+  taskId: string;
   subjectId: string;
   isAgent: string;
   comments: string;
@@ -24,7 +22,7 @@ export const EditCall: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   
   const { data: call, isLoading, error } = useCall(callId || '');
-  const { programManagement, categories, subjects } = useAllReferenceData();
+  const { tasks, subjects } = useAllReferenceData();
   const updateCallMutation = useUpdateCall();
 
   const {
@@ -35,17 +33,17 @@ export const EditCall: React.FC = () => {
     formState: { isDirty, errors },
   } = useForm<EditCallFormData>();
 
-  const selectedParentId = watch('programManagementParentId');
-  
-  // Clear child selection when parent changes or has no children
+  const selectedTaskId = watch('taskId');
+
+  // Clear subject selection when task changes to one without subjects
   useEffect(() => {
-    const selectedParent = programManagement.data?.find(p => p.id === selectedParentId);
-    const hasChildren = selectedParent?.children && selectedParent.children.length > 0;
-    
-    if (!hasChildren) {
-      setValue('programManagementChildId', '');
+    if (selectedTaskId && tasks.data) {
+      const selectedTask = tasks.data.find(t => t.id === selectedTaskId);
+      if (selectedTask && !selectedTask.hasSubjects) {
+        setValue('subjectId', '');
+      }
     }
-  }, [selectedParentId, programManagement.data, setValue]);
+  }, [selectedTaskId, tasks.data, setValue]);
 
   // Initialize form with call data
   useEffect(() => {
@@ -64,31 +62,18 @@ export const EditCall: React.FC = () => {
         setValue('endTime', formatDateTimeForInput(endTime.toISOString()));
       }
       
-      // Find the matching reference data IDs
-      const matchingCategory = categories.data?.find(cat => cat.name === call.category);
-      if (matchingCategory) {
-        setValue('categoryId', matchingCategory.id);
+      // Find the matching reference data IDs for Task-Subject model
+      const matchingTask = tasks.data?.find(task => task.name === call.taskName);
+      if (matchingTask) {
+        setValue('taskId', matchingTask.id);
       }
       
-      const matchingSubject = subjects.data?.find(subj => subj.name === call.subject);
+      const matchingSubject = subjects.data?.find(subj => subj.name === call.subjectName);
       if (matchingSubject) {
         setValue('subjectId', matchingSubject.id);
       }
-      
-      // For program management, we need to find parent and child
-      if (call.programManagement) {
-        programManagement.data?.forEach(parent => {
-          const matchingChild = parent.children?.find(child => 
-            `${parent.name} - ${child.name}` === call.programManagement
-          );
-          if (matchingChild) {
-            setValue('programManagementParentId', parent.id);
-            setValue('programManagementChildId', matchingChild.id);
-          }
-        });
-      }
     }
-  }, [call, setValue, categories.data, subjects.data, programManagement.data]);
+  }, [call, setValue, tasks.data, subjects.data]);
 
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString();
@@ -135,14 +120,8 @@ export const EditCall: React.FC = () => {
       }
 
       // Add IDs only if selected
-      if (data.programManagementParentId) {
-        updateData.programManagementParentId = data.programManagementParentId;
-      }
-      if (data.programManagementChildId) {
-        updateData.programManagementChildId = data.programManagementChildId;
-      }
-      if (data.categoryId) {
-        updateData.categoryId = data.categoryId;
+      if (data.taskId) {
+        updateData.taskId = data.taskId;
       }
       if (data.subjectId) {
         updateData.subjectId = data.subjectId;
@@ -188,9 +167,11 @@ export const EditCall: React.FC = () => {
     );
   }
 
-  // Get children for selected parent
-  const selectedParent = programManagement.data?.find(p => p.id === selectedParentId);
-  const availableChildren = selectedParent?.children || [];
+  // Task-Subject model: Get selected task and check if it has subjects
+  const selectedTask = selectedTaskId && tasks.data ? 
+    tasks.data.find(t => t.id === selectedTaskId) : null;
+  const selectedTaskHasSubjects = selectedTask?.hasSubjects || false;
+  const availableSubjects = selectedTask?.subjects || [];
 
   return (
     <div className="edit-call-page">
@@ -306,61 +287,26 @@ export const EditCall: React.FC = () => {
           </div>
 
           <div className="form-section">
-            <h3>Program Management</h3>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label>Department</label>
-                <select {...register('programManagementParentId')}>
-                  <option value="">Select Department</option>
-                  {programManagement.data?.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group" style={{ 
-                visibility: selectedParentId && availableChildren.length > 0 ? 'visible' : 'hidden' 
-              }}>
-                <label>Sub-Department</label>
-                <select 
-                  {...register('programManagementChildId')}
-                  disabled={!selectedParentId || availableChildren.length === 0}
-                >
-                  <option value="">Select Sub-Department</option>
-                  {availableChildren.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="form-section">
             <h3>Call Details</h3>
             
             <div className="form-row">
               <div className="form-group">
-                <label>Category</label>
-                <select {...register('categoryId')}>
-                  <option value="">Select Category</option>
-                  {categories.data?.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
+                <label>Task</label>
+                <select {...register('taskId')}>
+                  <option value="">Select Task</option>
+                  {tasks.data?.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ visibility: selectedTaskHasSubjects ? 'visible' : 'hidden' }}>
                 <label>Subject</label>
-                <select {...register('subjectId')}>
+                <select {...register('subjectId')} disabled={!selectedTaskHasSubjects}>
                   <option value="">Select Subject</option>
-                  {subjects.data?.map((subject) => (
+                  {availableSubjects.map((subject) => (
                     <option key={subject.id} value={subject.id}>
                       {subject.name}
                     </option>

@@ -54,8 +54,8 @@ export const callsApi = {
   // Get calls with filters
   getFilteredCalls: (filters: {
     userEmail?: string;
-    programParentId?: string;
-    categoryId?: string;
+    taskId?: string;
+    subjectId?: string;
     startDate?: string;
     endDate?: string;
     page?: number;

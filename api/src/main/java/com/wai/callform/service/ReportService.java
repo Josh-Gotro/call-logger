@@ -238,17 +238,17 @@ public class ReportService {
             .average()
             .orElse(0.0);
         
-        // Group by categories
-        Map<String, Long> categoryBreakdown = calls.stream()
-            .filter(call -> call.getCategory() != null)
-            .collect(Collectors.groupingBy(CallEntryDto::getCategory, Collectors.counting()));
+        // Group by tasks (formerly categories)
+        Map<String, Long> taskBreakdown = calls.stream()
+            .filter(call -> call.getTaskName() != null)
+            .collect(Collectors.groupingBy(CallEntryDto::getTaskName, Collectors.counting()));
         
-        Map<String, Long> programBreakdown = calls.stream()
-            .filter(call -> call.getProgramManagement() != null)
-            .collect(Collectors.groupingBy(CallEntryDto::getProgramManagement, Collectors.counting()));
+        Map<String, Long> subjectBreakdown = calls.stream()
+            .filter(call -> call.getSubjectName() != null)
+            .collect(Collectors.groupingBy(CallEntryDto::getSubjectName, Collectors.counting()));
 
         return new ReportSummary(totalCalls, completedCalls, inProgressCalls, avgDuration, 
-                                categoryBreakdown, programBreakdown);
+                                taskBreakdown, subjectBreakdown);
     }
 
     /**
@@ -276,9 +276,9 @@ public class ReportService {
                .append(escapeCSV(call.getStartTime() != null ? call.getStartTime().toString() : "")).append(",")
                .append(escapeCSV(call.getEndTime() != null ? call.getEndTime().toString() : "")).append(",")
                .append(escapeCSV(call.getDurationMinutes() != null ? call.getDurationMinutes().toString() : "")).append(",")
-               .append(escapeCSV(call.getProgramManagement() != null ? call.getProgramManagement() : "")).append(",")
-               .append(escapeCSV(call.getCategory() != null ? call.getCategory() : "")).append(",")
-               .append(escapeCSV(call.getSubject() != null ? call.getSubject() : "")).append(",")
+               .append(escapeCSV(call.getTaskName() != null ? call.getTaskName() : "")).append(",")
+               .append(escapeCSV(call.getSubjectName() != null ? call.getSubjectName() : "")).append(",")
+               .append(escapeCSV(call.getTaskSubjectDisplay() != null ? call.getTaskSubjectDisplay() : "")).append(",")
                .append(escapeCSV(call.getIsInbound() != null ? call.getIsInbound().toString() : "")).append(",")
                .append(escapeCSV(call.getIsAgent() != null ? call.getIsAgent().toString() : "")).append(",")
                .append(escapeCSV(call.getComments() != null ? call.getComments() : "")).append(",")
@@ -508,8 +508,8 @@ public class ReportService {
         long completedCalls,
         long inProgressCalls,
         double averageDurationMinutes,
-        Map<String, Long> categoryBreakdown,
-        Map<String, Long> programBreakdown
+        Map<String, Long> taskBreakdown,
+        Map<String, Long> subjectBreakdown
     ) {}
 
     public record ReportStatistics(

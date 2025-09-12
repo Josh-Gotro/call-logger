@@ -29,17 +29,17 @@ public class CallEntryDto {
     private OffsetDateTime endTime;
 
     private Boolean isInbound;
-
-    @Size(max = 100, message = "Program management must not exceed 100 characters")
-    private String programManagement;
-
-    @Size(max = 100, message = "Category must not exceed 100 characters")
-    private String category;
-
-    @Size(max = 100, message = "Subject must not exceed 100 characters")
-    private String subject;
-
     private Boolean isAgent;
+
+    // Task and Subject references
+    private UUID taskId;
+    private String taskName;
+    
+    private UUID subjectId;
+    private String subjectName;
+    
+    // Display field for UI
+    private String taskSubjectDisplay;
 
     private String comments;
 

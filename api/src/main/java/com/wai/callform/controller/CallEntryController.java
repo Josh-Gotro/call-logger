@@ -95,19 +95,19 @@ public class CallEntryController {
     @GetMapping("/filtered")
     public ResponseEntity<Page<CallEntryDto>> getCallsWithFilters(
             @RequestParam(required = false) String userEmail,
-            @RequestParam(required = false) UUID programParentId,
-            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) UUID taskId,
+            @RequestParam(required = false) UUID subjectId,
             @RequestParam(required = false) OffsetDateTime startDate,
             @RequestParam(required = false) OffsetDateTime endDate,
             Pageable pageable) {
-        log.debug("Getting filtered calls with filters - user: {}, programParentId: {}, categoryId: {}", 
-                 userEmail, programParentId, categoryId);
+        log.debug("Getting filtered calls with filters - user: {}, taskId: {}, subjectId: {}", 
+                 userEmail, taskId, subjectId);
         
         // Convert camelCase sort fields to database column names
         Pageable convertedPageable = convertSortFields(pageable);
         
         Page<CallEntryDto> calls = callEntryService.getCallsWithFilters(
-            userEmail, programParentId, categoryId, startDate, endDate, convertedPageable);
+            userEmail, taskId, subjectId, startDate, endDate, convertedPageable);
         return ResponseEntity.ok(calls);
     }
     

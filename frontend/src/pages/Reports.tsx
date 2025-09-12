@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { useUser } from '../contexts/UserContext';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { Card } from '../components/ui/Card';
+import { useTasks, useSubjects } from '../hooks/useReferenceQueries';
 import './Reports.css';
 
 interface ReportFilters {
@@ -11,9 +12,7 @@ interface ReportFilters {
   startDate?: string;
   endDate?: string;
   datatechEmail?: string;
-  programManagementParentId?: string;
-  programManagementChildId?: string;
-  categoryId?: string;
+  taskId?: string;
   subjectId?: string;
   isInbound?: boolean | null;
   isAgent?: boolean | null;
@@ -28,9 +27,8 @@ interface CallEntry {
   durationMinutes: number;
   isInbound: boolean;
   isAgent: boolean;
-  category: string;
-  subject: string;
-  programManagement: string;
+  taskName: string;
+  subjectName: string;
   comments?: string;
 }
 
@@ -39,8 +37,8 @@ interface ReportSummary {
   completedCalls: number;
   inProgressCalls: number;
   averageDurationMinutes: number;
-  categoryBreakdown: Record<string, number>;
-  programBreakdown: Record<string, number>;
+  taskBreakdown: Record<string, number>;
+  subjectBreakdown: Record<string, number>;
 }
 
 interface LiveReportResult {
@@ -68,6 +66,10 @@ export const Reports: React.FC = () => {
   const [filters, setFilters] = useState<ReportFilters>({ period: 'THIS_MONTH' });
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
 
+  // Use new Task-Subject hooks instead of direct API calls
+  const { data: tasks = [] } = useTasks();
+  const { data: subjects = [] } = useSubjects();
+
   // Fetch available periods
   const { data: periods = [] } = useQuery<PeriodOption[]>({
     queryKey: ['report-periods'],
@@ -79,32 +81,18 @@ export const Reports: React.FC = () => {
   });
 
   // Fetch reference data for filters
-  const { data: programManagement = [] } = useQuery<ReferenceData[]>({
-    queryKey: ['program-management'],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE}/reference/program-management/hierarchy`);
-      if (!response.ok) throw new Error('Failed to fetch program management');
-      return response.json();
-    }
-  });
+  // Convert new data format to legacy format for compatibility
+  const programManagement = tasks.map(task => ({
+    id: task.id,
+    name: task.name,
+    children: [],
+    hasChildren: false
+  }));
 
-  const { data: categories = [] } = useQuery<ReferenceData[]>({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE}/reference/categories`);
-      if (!response.ok) throw new Error('Failed to fetch categories');
-      return response.json();
-    }
-  });
-
-  const { data: subjects = [] } = useQuery<ReferenceData[]>({
-    queryKey: ['subjects'],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE}/reference/subjects`);
-      if (!response.ok) throw new Error('Failed to fetch subjects');
-      return response.json();
-    }
-  });
+  const categories = subjects.map(subject => ({
+    id: subject.id,
+    name: subject.name
+  }));
 
   // Fetch datatech users
   const { data: datatechUsers = [] } = useQuery<string[]>({
@@ -127,9 +115,7 @@ export const Reports: React.FC = () => {
       params.append('startDate', filters.startDate);
       params.append('endDate', filters.endDate);
       if (filters.datatechEmail) params.append('datatechEmail', filters.datatechEmail);
-      if (filters.programManagementParentId) params.append('programManagementParentId', filters.programManagementParentId);
-      if (filters.programManagementChildId) params.append('programManagementChildId', filters.programManagementChildId);
-      if (filters.categoryId) params.append('categoryId', filters.categoryId);
+      if (filters.taskId) params.append('programParentId', filters.taskId);
       if (filters.subjectId) params.append('subjectId', filters.subjectId);
       if (filters.isInbound !== null && filters.isInbound !== undefined) params.append('isInbound', filters.isInbound.toString());
       if (filters.isAgent !== null && filters.isAgent !== undefined) params.append('isAgent', filters.isAgent.toString());
@@ -138,9 +124,7 @@ export const Reports: React.FC = () => {
     } else if (filters.period) {
       const params = new URLSearchParams();
       if (filters.datatechEmail) params.append('datatechEmail', filters.datatechEmail);
-      if (filters.programManagementParentId) params.append('programManagementParentId', filters.programManagementParentId);
-      if (filters.programManagementChildId) params.append('programManagementChildId', filters.programManagementChildId);
-      if (filters.categoryId) params.append('categoryId', filters.categoryId);
+      if (filters.taskId) params.append('programParentId', filters.taskId);
       if (filters.subjectId) params.append('subjectId', filters.subjectId);
       if (filters.isInbound !== null && filters.isInbound !== undefined) params.append('isInbound', filters.isInbound.toString());
       if (filters.isAgent !== null && filters.isAgent !== undefined) params.append('isAgent', filters.isAgent.toString());
@@ -220,8 +204,7 @@ export const Reports: React.FC = () => {
     setIsCustomDateRange(false);
   };
 
-  const selectedParent = programManagement.find(p => p.id === filters.programManagementParentId);
-  const childOptions = selectedParent?.children || [];
+  const selectedTask = tasks.find(t => t.id === filters.taskId);
 
   return (
     <div className="reports-container">
@@ -334,18 +317,15 @@ export const Reports: React.FC = () => {
 
           {/* Department Filter */}
           <div className="filter-group">
-            <label>Department</label>
-            <label htmlFor="department-select">Department</label>
+            <label>Task</label>
+            <label htmlFor="department-select">Task</label>
             <select
               id="department-select"
-              value={filters.programManagementParentId || ''}
-              onChange={(e) => {
-                handleFilterChange('programManagementParentId', e.target.value);
-                handleFilterChange('programManagementChildId', ''); // Clear child when parent changes
-              }}
+              value={filters.taskId || ''}
+              onChange={(e) => handleFilterChange('taskId', e.target.value)}
               className="form-input"
             >
-              <option value="">All Departments</option>
+              <option value="">All Tasks</option>
               {programManagement.map(dept => (
                 <option key={dept.id} value={dept.id}>
                   {dept.name}
@@ -354,32 +334,14 @@ export const Reports: React.FC = () => {
             </select>
           </div>
 
-          {/* Sub-Department Filter */}
-          {childOptions.length > 0 && (
-            <div className="filter-group">
-              <label htmlFor="sub-department-select">Sub-Department</label>
-              <select
-                id="sub-department-select"
-                value={filters.programManagementChildId || ''}
-                onChange={(e) => handleFilterChange('programManagementChildId', e.target.value)}
-                className="form-input"
-              >
-                <option value="">All Sub-Departments</option>
-                {childOptions.map(child => (
-                  <option key={child.id} value={child.id}>
-                    {child.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Note: Sub-tasks not supported in Task-Subject model */}
 
           {/* Category Filter */}
           <div className="filter-group">
             <label>Category</label>
             <select
-              value={filters.categoryId || ''}
-              onChange={(e) => handleFilterChange('categoryId', e.target.value)}
+              value={filters.subjectId || ''}
+              onChange={(e) => handleFilterChange('subjectId', e.target.value)}
               className="form-input"
               title="Select a category"
             >
@@ -491,18 +453,18 @@ export const Reports: React.FC = () => {
           </Card>
 
           {/* Breakdown Charts */}
-          {(Object.keys(reportData.summary.categoryBreakdown).length > 0 ||
-            Object.keys(reportData.summary.programBreakdown).length > 0) && (
+          {reportData?.summary && (Object.keys(reportData.summary.taskBreakdown || {}).length > 0 ||
+            Object.keys(reportData.summary.subjectBreakdown || {}).length > 0) && (
             <div className="breakdown-section">
-              {Object.keys(reportData.summary.categoryBreakdown).length > 0 && (
+              {Object.keys(reportData.summary.subjectBreakdown || {}).length > 0 && (
                 <Card className="breakdown-card">
-                  <h4>By Category</h4>
+                  <h4>By Subject</h4>
                   <div className="breakdown-list">
-                    {Object.entries(reportData.summary.categoryBreakdown)
+                    {Object.entries(reportData.summary.subjectBreakdown || {})
                       .sort(([,a], [,b]) => b - a)
-                      .map(([category, count]) => (
-                      <div key={category} className="breakdown-item">
-                        <span className="breakdown-label">{category}</span>
+                      .map(([subject, count]) => (
+                      <div key={subject} className="breakdown-item">
+                        <span className="breakdown-label">{subject}</span>
                         <span className="breakdown-value">{count}</span>
                         <div className="breakdown-bar">
                           <div
@@ -518,15 +480,15 @@ export const Reports: React.FC = () => {
                 </Card>
               )}
 
-              {Object.keys(reportData.summary.programBreakdown).length > 0 && (
+              {Object.keys(reportData.summary.taskBreakdown || {}).length > 0 && (
                 <Card className="breakdown-card">
-                  <h4>By Department</h4>
+                  <h4>By Task</h4>
                   <div className="breakdown-list">
-                    {Object.entries(reportData.summary.programBreakdown)
+                    {Object.entries(reportData.summary.taskBreakdown)
                       .sort(([,a], [,b]) => b - a)
-                      .map(([program, count]) => (
-                      <div key={program} className="breakdown-item">
-                        <span className="breakdown-label">{program}</span>
+                      .map(([task, count]) => (
+                      <div key={task} className="breakdown-item">
+                        <span className="breakdown-label">{task}</span>
                         <span className="breakdown-value">{count}</span>
                         <div className="breakdown-bar">
                           <div
@@ -559,9 +521,8 @@ export const Reports: React.FC = () => {
                       <th>Data Tech</th>
                       <th>Duration</th>
                       <th>Type</th>
-                      <th>Category</th>
+                      <th>Task</th>
                       <th>Subject</th>
-                      <th>Department</th>
                       <th>Comments</th>
                     </tr>
                   </thead>
@@ -584,9 +545,8 @@ export const Reports: React.FC = () => {
                             {call.isAgent && ' (Agent)'}
                           </span>
                         </td>
-                        <td>{call.category || '-'}</td>
-                        <td>{call.subject || '-'}</td>
-                        <td>{call.programManagement || '-'}</td>
+                        <td>{call.taskName || '-'}</td>
+                        <td>{call.subjectName || '-'}</td>
                         <td className="comments-cell">
                           {call.comments ? (
                             <span title={call.comments}>

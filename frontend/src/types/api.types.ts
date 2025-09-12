@@ -8,9 +8,8 @@ export interface CallEntry {
   startTime: string;
   endTime: string | null;
   isInbound: boolean | null;
-  programManagement: string | null;
-  category: string | null;
-  subject: string | null;
+  taskName: string | null;
+  subjectName: string | null;
   isAgent: boolean | null;
   comments: string | null;
   createdAt: string;
@@ -27,9 +26,7 @@ export interface StartCallRequest {
 
 export interface UpdateCallRequest {
   isInbound?: boolean;
-  programManagementParentId?: string;
-  programManagementChildId?: string;
-  categoryId?: string;
+  taskId?: string;
   subjectId?: string;
   isAgent?: boolean;
   comments?: string;
@@ -37,30 +34,49 @@ export interface UpdateCallRequest {
   endTime?: string;
 }
 
-// Reference Data Types
-export interface ProgramManagementItem {
+// Reference Data Types - Task-Subject Model
+export interface TaskEntity {
   id: string;
   name: string;
-  parentId: string | null;
-  parentName: string | null;
-  children: ProgramManagementItem[] | null;
-  hasChildren: boolean;
-  active: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  subjects: SubjectReference[];
+  subjectCount: number;
+  hasSubjects: boolean;
+}
+
+export interface SubjectEntity {
+  id: string;
+  name: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  tasks: TaskReference[];
+  taskCount: number;
+  isAssignedToTasks: boolean;
+}
+
+export interface SubjectReference {
+  id: string;
+  name: string;
   sortOrder: number;
 }
 
-export interface CategoryItem {
+export interface TaskReference {
   id: string;
   name: string;
-  active: boolean;
   sortOrder: number;
 }
 
-export interface SubjectItem {
-  id: string;
-  name: string;
-  active: boolean;
-  sortOrder: number;
+export interface TaskSubjectSummary {
+  totalTasks: number;
+  totalSubjects: number;
+  totalRelationships: number;
+  tasks: TaskEntity[];
+  subjects: SubjectEntity[];
 }
 
 // Report Types
@@ -68,9 +84,8 @@ export interface ReportRequest {
   reportType: 'LIVE' | 'DETAILED_EXPORT' | 'SUMMARY';
   requestedBy: string;
   userEmail?: string;
-  programManagement?: string;
-  category?: string;
-  subject?: string;
+  taskName?: string;
+  subjectName?: string;
   startDate?: string;
   endDate?: string;
   additionalFilters?: Record<string, any>;

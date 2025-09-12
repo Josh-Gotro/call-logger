@@ -47,17 +47,21 @@ public interface CallEntryRepository extends JpaRepository<CallEntry, UUID> {
                                           @Param("startDate") OffsetDateTime startDate,
                                           @Param("endDate") OffsetDateTime endDate);
 
-    // Find calls by program management parent
-    @Query("SELECT c FROM CallEntry c WHERE c.programManagementParent.id = :parentId ORDER BY c.startTime DESC")
-    List<CallEntry> findByProgramManagementParentOrderByStartTimeDesc(@Param("parentId") UUID parentId);
-
-    // Find calls by category
-    @Query("SELECT c FROM CallEntry c WHERE c.category.id = :categoryId ORDER BY c.startTime DESC")
-    List<CallEntry> findByCategoryOrderByStartTimeDesc(@Param("categoryId") UUID categoryId);
+    // Find calls by task
+    @Query("SELECT c FROM CallEntry c WHERE c.task.id = :taskId ORDER BY c.startTime DESC")
+    List<CallEntry> findByTaskOrderByStartTimeDesc(@Param("taskId") UUID taskId);
 
     // Find calls by subject
     @Query("SELECT c FROM CallEntry c WHERE c.subject.id = :subjectId ORDER BY c.startTime DESC")
     List<CallEntry> findBySubjectOrderByStartTimeDesc(@Param("subjectId") UUID subjectId);
+
+    // Find calls by task and subject
+    @Query("SELECT c FROM CallEntry c WHERE c.task.id = :taskId AND c.subject.id = :subjectId ORDER BY c.startTime DESC")
+    List<CallEntry> findByTaskAndSubject(@Param("taskId") UUID taskId, @Param("subjectId") UUID subjectId);
+
+    // Find calls by task with no subject
+    @Query("SELECT c FROM CallEntry c WHERE c.task.id = :taskId AND c.subject IS NULL ORDER BY c.startTime DESC")
+    List<CallEntry> findByTaskWithNoSubject(@Param("taskId") UUID taskId);
 
     // Find user calls within date range using simple method name query
     Page<CallEntry> findByDatatechEmailAndStartTimeBetween(String datatechEmail, 
@@ -92,4 +96,5 @@ public interface CallEntryRepository extends JpaRepository<CallEntry, UUID> {
     // Find recent calls for dashboard (last N days)
     @Query("SELECT c FROM CallEntry c WHERE c.startTime >= :cutoffDate ORDER BY c.startTime DESC")
     List<CallEntry> findRecentCalls(@Param("cutoffDate") OffsetDateTime cutoffDate, Pageable pageable);
+
 }

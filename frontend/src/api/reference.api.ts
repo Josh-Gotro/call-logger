@@ -1,58 +1,45 @@
 import { apiClient, extractData } from '../lib/api-client';
 import {
-  ProgramManagementItem,
-  CategoryItem,
-  SubjectItem,
+  TaskEntity,
+  SubjectEntity,
+  TaskSubjectSummary,
 } from '../types/api.types';
 
-// Reference Data API Functions
+// Task-Subject Reference Data API Functions
 
 export const referenceApi = {
-  // Program Management
-  getProgramManagementHierarchy: (): Promise<ProgramManagementItem[]> =>
-    apiClient.get('/reference/program-management/hierarchy').then(extractData),
+  // Tasks
+  getAllTasks: (): Promise<TaskEntity[]> =>
+    apiClient.get('/tasks-subjects/tasks').then(extractData),
 
-  getAllProgramManagementItems: (): Promise<ProgramManagementItem[]> =>
-    apiClient.get('/reference/program-management').then(extractData),
+  getTaskById: (taskId: string): Promise<TaskEntity> =>
+    apiClient.get(`/tasks-subjects/tasks/${taskId}`).then(extractData),
 
-  getProgramManagementParents: (): Promise<ProgramManagementItem[]> =>
-    apiClient.get('/reference/program-management/parents').then(extractData),
-
-  getProgramManagementChildren: (parentId: string): Promise<ProgramManagementItem[]> =>
-    apiClient.get(`/reference/program-management/parent/${parentId}/children`).then(extractData),
-
-  searchProgramManagement: (query: string): Promise<ProgramManagementItem[]> =>
-    apiClient
-      .get('/reference/program-management/search', {
-        params: { query },
-      })
-      .then(extractData),
-
-  // Categories
-  getCategories: (): Promise<CategoryItem[]> =>
-    apiClient.get('/reference/categories').then(extractData),
-
-  getCategory: (id: string): Promise<CategoryItem> =>
-    apiClient.get(`/reference/categories/${id}`).then(extractData),
-
-  searchCategories: (query: string): Promise<CategoryItem[]> =>
-    apiClient
-      .get('/reference/categories/search', {
-        params: { query },
-      })
-      .then(extractData),
+  getSubjectsForTask: (taskId: string): Promise<SubjectEntity[]> =>
+    apiClient.get(`/tasks-subjects/tasks/${taskId}/subjects`).then(extractData),
 
   // Subjects
-  getSubjects: (): Promise<SubjectItem[]> =>
-    apiClient.get('/reference/subjects').then(extractData),
+  getAllSubjects: (): Promise<SubjectEntity[]> =>
+    apiClient.get('/tasks-subjects/subjects').then(extractData),
 
-  getSubject: (id: string): Promise<SubjectItem> =>
-    apiClient.get(`/reference/subjects/${id}`).then(extractData),
+  // Validation
+  validateTaskSubjectRelationship: (taskId: string, subjectId: string): Promise<boolean> =>
+    apiClient.get('/tasks-subjects/validate', {
+      params: { taskId, subjectId },
+    }).then(extractData),
 
-  searchSubjects: (query: string): Promise<SubjectItem[]> =>
-    apiClient
-      .get('/reference/subjects/search', {
-        params: { query },
-      })
-      .then(extractData),
+  // Summary/Overview
+  getTaskSubjectSummary: (): Promise<TaskSubjectSummary> =>
+    apiClient.get('/tasks-subjects/summary').then(extractData),
+
+  // Admin functions (for creating tasks/subjects)
+  createTask: (name: string, sortOrder?: number): Promise<TaskEntity> =>
+    apiClient.post('/tasks-subjects/tasks', null, {
+      params: { name, sortOrder },
+    }).then(extractData),
+
+  createSubject: (name: string, sortOrder?: number): Promise<SubjectEntity> =>
+    apiClient.post('/tasks-subjects/subjects', null, {
+      params: { name, sortOrder },
+    }).then(extractData),
 };

@@ -10,9 +10,7 @@ import './ActiveCall.css';
 
 interface ActiveCallFormData {
   isInbound: string;
-  programManagementParentId: string;
-  programManagementChildId: string;
-  categoryId: string;
+  taskId: string;
   subjectId: string;
   isAgent: string;
   comments: string;
@@ -30,7 +28,7 @@ export const ActiveCall: React.FC = () => {
   const activeCall = callDataFromState || queriedActiveCall;
 
 
-  const { programManagement, categories, subjects } = useAllReferenceData();
+  const { tasks, subjects } = useAllReferenceData();
   const updateCallMutation = useUpdateCall();
   const endCallMutation = useEndCall();
   const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null);
@@ -48,17 +46,17 @@ export const ActiveCall: React.FC = () => {
     }
   });
 
-  const selectedParentId = watch('programManagementParentId');
+  const selectedTaskId = watch('taskId');
 
-  // Clear child selection when parent changes or has no children
+  // Clear subject selection when task changes to one without subjects
   useEffect(() => {
-    const selectedParent = programManagement.data?.find(p => p.id === selectedParentId);
-    const hasChildren = selectedParent?.children && selectedParent.children.length > 0;
-
-    if (!hasChildren) {
-      setValue('programManagementChildId', '');
+    if (selectedTaskId && tasks.data) {
+      const selectedTask = tasks.data.find(t => t.id === selectedTaskId);
+      if (selectedTask && !selectedTask.hasSubjects) {
+        setValue('subjectId', '');
+      }
     }
-  }, [selectedParentId, programManagement.data, setValue]);
+  }, [selectedTaskId, tasks.data, setValue]);
 
   // Redirect logic using navigation state data priority
   useEffect(() => {
@@ -109,37 +107,18 @@ export const ActiveCall: React.FC = () => {
       // This is a limitation - the API returns names but we need IDs for form submission
       // For existing calls, we'll try to match by name
 
-      if (activeCall.category && categories.data) {
-        const category = categories.data.find(c => c.name === activeCall.category);
-        if (category) {
-          setValue('categoryId', category.id);
+      // Handle Task-Subject model fields
+      if (activeCall.taskName && tasks.data) {
+        const task = tasks.data.find(t => t.name === activeCall.taskName);
+        if (task) {
+          setValue('taskId', task.id);
         }
       }
 
-      if (activeCall.subject && subjects.data) {
-        const subject = subjects.data.find(s => s.name === activeCall.subject);
+      if (activeCall.subjectName && subjects.data) {
+        const subject = subjects.data.find(s => s.name === activeCall.subjectName);
         if (subject) {
           setValue('subjectId', subject.id);
-        }
-      }
-
-      // For program management, we need to parse the display string
-      // Format is typically "Parent > Child" or just "Parent"
-      if (activeCall.programManagement && programManagement.data) {
-        const parts = activeCall.programManagement.split(' > ');
-        const parentName = parts[0];
-        const childName = parts[1];
-
-        const parent = programManagement.data.find(p => p.name === parentName);
-        if (parent) {
-          setValue('programManagementParentId', parent.id);
-
-          if (childName && parent.children) {
-            const child = parent.children.find(c => c.name === childName);
-            if (child) {
-              setValue('programManagementChildId', child.id);
-            }
-          }
         }
       }
     } else {
@@ -147,7 +126,7 @@ export const ActiveCall: React.FC = () => {
       setValue('isInbound', 'yes');
       setValue('isAgent', 'no');
     }
-  }, [activeCall, setValue, categories.data, subjects.data, programManagement.data]);
+  }, [activeCall, setValue, tasks.data, subjects.data]);
 
 
   const formatTime = (dateString: string): string => {
@@ -165,14 +144,8 @@ export const ActiveCall: React.FC = () => {
       };
 
       // Add IDs only if selected
-      if (data.programManagementParentId) {
-        updateData.programManagementParentId = data.programManagementParentId;
-      }
-      if (data.programManagementChildId) {
-        updateData.programManagementChildId = data.programManagementChildId;
-      }
-      if (data.categoryId) {
-        updateData.categoryId = data.categoryId;
+      if (data.taskId) {
+        updateData.taskId = data.taskId;
       }
       if (data.subjectId) {
         updateData.subjectId = data.subjectId;
@@ -201,14 +174,8 @@ export const ActiveCall: React.FC = () => {
         };
 
         // Add IDs only if selected
-        if (formData.programManagementParentId) {
-          updateData.programManagementParentId = formData.programManagementParentId;
-        }
-        if (formData.programManagementChildId) {
-          updateData.programManagementChildId = formData.programManagementChildId;
-        }
-        if (formData.categoryId) {
-          updateData.categoryId = formData.categoryId;
+        if (formData.taskId) {
+          updateData.taskId = formData.taskId;
         }
         if (formData.subjectId) {
           updateData.subjectId = formData.subjectId;
@@ -241,9 +208,11 @@ export const ActiveCall: React.FC = () => {
     return <div className="no-active-call">No active call found</div>;
   }
 
-  // Get children for selected parent
-  const selectedParent = programManagement.data?.find(p => p.id === selectedParentId);
-  const availableChildren = selectedParent?.children || [];
+  // Task-Subject model: Get selected task and check if it has subjects
+  const selectedTask = selectedTaskId && tasks.data ? 
+    tasks.data.find(t => t.id === selectedTaskId) : null;
+  const selectedTaskHasSubjects = selectedTask?.hasSubjects || false;
+  const availableSubjects = selectedTask?.subjects || [];
 
   return (
     <div className="active-call-page">
@@ -321,76 +290,26 @@ export const ActiveCall: React.FC = () => {
           </div>
 
           <div className="form-section">
-            <h3>Management Program</h3>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label>Department</label>
-                <select {...register('programManagementParentId')}>
-                  <option value="">Select Department</option>
-                  {programManagement.data?.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group" style={{
-                visibility: selectedParentId && availableChildren.length > 0 ? 'visible' : 'hidden'
-              }}>
-                <label>Sub-Department</label>
-                <select
-                  {...register('programManagementChildId', {
-                    validate: (value) => {
-                      const selectedParent = programManagement.data?.find(p => p.id === selectedParentId);
-                      const hasChildren = selectedParent?.children && selectedParent.children.length > 0;
-                      
-                      if (hasChildren && !value) {
-                        return 'Sub-Department is required when Department has sub-departments';
-                      }
-                      return true;
-                    }
-                  })}
-                  disabled={!selectedParentId || availableChildren.length === 0}
-                >
-                  <option value="">Select Sub-Department</option>
-                  {availableChildren.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.programManagementChildId && (
-                  <div className="error-message">
-                    {errors.programManagementChildId.message}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="form-section">
             <h3>Call Details</h3>
 
             <div className="form-row">
               <div className="form-group">
-                <label>Category</label>
-                <select {...register('categoryId')}>
-                  <option value="">Select Category</option>
-                  {categories.data?.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
+                <label>Task</label>
+                <select {...register('taskId')}>
+                  <option value="">Select Task</option>
+                  {tasks.data?.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ visibility: selectedTaskHasSubjects ? 'visible' : 'hidden' }}>
                 <label>Subject</label>
-                <select {...register('subjectId')}>
+                <select {...register('subjectId')} disabled={!selectedTaskHasSubjects}>
                   <option value="">Select Subject</option>
-                  {subjects.data?.map((subject) => (
+                  {availableSubjects.map((subject) => (
                     <option key={subject.id} value={subject.id}>
                       {subject.name}
                     </option>
