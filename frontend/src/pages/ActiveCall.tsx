@@ -88,8 +88,8 @@ export const ActiveCall: React.FC = () => {
   // Initialize form with current call data or defaults
   useEffect(() => {
     if (activeCall) {
-      // Check if this is a new call (no category/subject set) - use frontend defaults
-      const isNewCall = !activeCall.category && !activeCall.subject && !activeCall.programManagement;
+      // Check if this is a new call (no task/subject set) - use frontend defaults
+      const isNewCall = !activeCall.taskName && !activeCall.subjectName;
       
       if (isNewCall) {
         // For new calls, use our preferred defaults regardless of backend values

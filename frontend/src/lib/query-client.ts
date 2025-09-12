@@ -50,10 +50,6 @@ export const queryKeys = {
     tasks: () => [...queryKeys.reference.all, 'tasks'] as const,
     subjects: () => [...queryKeys.reference.all, 'subjects'] as const,
     taskSubjectSummary: () => [...queryKeys.reference.all, 'taskSubjectSummary'] as const,
-    // Legacy keys for backward compatibility
-    programManagement: () => [...queryKeys.reference.all, 'tasks'] as const, // Map to tasks
-    programManagementHierarchy: () => [...queryKeys.reference.all, 'tasks'] as const, // Map to tasks
-    categories: () => [...queryKeys.reference.all, 'subjects'] as const, // Map to subjects
   },
   reports: {
     all: ['reports'] as const,

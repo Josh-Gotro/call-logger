@@ -81,12 +81,10 @@ export const Reports: React.FC = () => {
   });
 
   // Fetch reference data for filters
-  // Convert new data format to legacy format for compatibility
-  const programManagement = tasks.map(task => ({
+  // Convert tasks data to format expected by UI
+  const taskOptions = tasks.map(task => ({
     id: task.id,
-    name: task.name,
-    children: [],
-    hasChildren: false
+    name: task.name
   }));
 
   const categories = subjects.map(subject => ({
@@ -326,9 +324,9 @@ export const Reports: React.FC = () => {
               className="form-input"
             >
               <option value="">All Tasks</option>
-              {programManagement.map(dept => (
-                <option key={dept.id} value={dept.id}>
-                  {dept.name}
+              {taskOptions.map(task => (
+                <option key={task.id} value={task.id}>
+                  {task.name}
                 </option>
               ))}
             </select>

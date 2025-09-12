@@ -83,14 +83,3 @@ export const useAllReferenceData = () => {
   };
 };
 
-// Legacy compatibility hooks (for gradual migration)
-// These map old function names to new task-subject equivalents
-
-/** @deprecated Use useTasks instead */
-export const useProgramManagementHierarchy = useTasks;
-
-/** @deprecated Use useTasks instead */
-export const useProgramManagementItems = useTasks;
-
-/** @deprecated Use useSubjects instead */
-export const useCategories = useSubjects;

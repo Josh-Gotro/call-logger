@@ -41,8 +41,8 @@ export const useUserCalls = (
 // Get filtered calls
 export const useFilteredCalls = (filters: {
   userEmail?: string;
-  programParentId?: string;
-  categoryId?: string;
+  taskId?: string;
+  subjectId?: string;
   startDate?: string;
   endDate?: string;
   page?: number;
