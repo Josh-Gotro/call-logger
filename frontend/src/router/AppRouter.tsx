@@ -6,11 +6,9 @@ import { StartCall } from '../pages/StartCall';
 import { ActiveCall } from '../pages/ActiveCall';
 import { CallHistory } from '../pages/CallHistory';
 import { EditCall } from '../pages/EditCall';
+import { Reports } from '../pages/Reports';
 import { SimpleLogin } from '../components/auth/SimpleLogin';
 import { useUser } from '../contexts/UserContext';
-
-// Placeholder pages - we'll create these next
-const Reports = () => <div>Reports Page - Coming Soon</div>;
 
 export const AppRouter: React.FC = () => {
   const { isAuthenticated } = useUser();
