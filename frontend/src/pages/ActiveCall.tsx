@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useUser } from '../contexts/UserContext';
-import { useActiveCall, useUpdateCall, useEndCall } from '../hooks/useCallQueries';
+import { useActiveCall, useUpdateCall, useEndCall, useStartCall } from '../hooks/useCallQueries';
 import { useAllReferenceData } from '../hooks/useReferenceQueries';
 import { useLiveDuration } from '../hooks/useLiveDuration';
 import { UpdateCallRequest } from '../types/api.types';
@@ -13,7 +13,6 @@ interface ActiveCallFormData {
   taskId: string;
   subjectId: string;
   isAgent: string;
-  comments: string;
 }
 
 export const ActiveCall: React.FC = () => {
@@ -21,17 +20,21 @@ export const ActiveCall: React.FC = () => {
   const location = useLocation();
   const { user } = useUser();
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [endedCallData, setEndedCallData] = useState(null);
 
   // Use call data from navigation state if available, otherwise from query
   const callDataFromState = location.state?.callData;
   const { data: queriedActiveCall, isLoading } = useActiveCall(user?.email || '', !!user);
-  const activeCall = callDataFromState || queriedActiveCall;
+  
+  // Priority order: ended call data (local state), navigation state, query data
+  const activeCall = endedCallData || callDataFromState || queriedActiveCall;
 
 
   const { tasks, subjects } = useAllReferenceData();
   const updateCallMutation = useUpdateCall();
   const endCallMutation = useEndCall();
-  const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null);
+  const startCallMutation = useStartCall();
+  const { formattedDuration: liveDuration } = useLiveDuration(activeCall?.startTime || null, activeCall?.endTime || null);
 
   const {
     register,
@@ -101,7 +104,6 @@ export const ActiveCall: React.FC = () => {
         setValue('isAgent', activeCall.isAgent ? 'yes' : 'no');
       }
 
-      setValue('comments', activeCall.comments || '');
 
       // TODO: We need to find IDs from the display names
       // This is a limitation - the API returns names but we need IDs for form submission
@@ -140,7 +142,6 @@ export const ActiveCall: React.FC = () => {
       const updateData: UpdateCallRequest = {
         isInbound: data.isInbound === 'yes',
         isAgent: data.isAgent === 'yes',
-        comments: data.comments || undefined,
       };
 
       // Add IDs only if selected
@@ -170,7 +171,6 @@ export const ActiveCall: React.FC = () => {
         const updateData: UpdateCallRequest = {
           isInbound: formData.isInbound === 'yes',
           isAgent: formData.isAgent === 'yes',
-          comments: formData.comments || undefined,
         };
 
         // Add IDs only if selected
@@ -189,14 +189,35 @@ export const ActiveCall: React.FC = () => {
       }
 
       // Then end the call
-      await endCallMutation.mutateAsync(activeCall.id);
-      // Use replace: true to avoid going back to active call, and add a flag to prevent auto-redirect
-      navigate('/start-call', {
-        state: { message: 'Call ended successfully', fromEndCall: true },
+      const endedCall = await endCallMutation.mutateAsync(activeCall.id);
+      
+      // Update local state to show ended call immediately
+      setEndedCallData(endedCall);
+      setShowEndConfirm(false);
+    } catch (error) {
+      console.error('Failed to end call:', error);
+    }
+  };
+
+  const handleStartNewCall = async () => {
+    if (!user?.email || !user?.name) return;
+
+    try {
+      const newCall = await startCallMutation.mutateAsync({
+        datatechName: user.name,
+        datatechEmail: user.email,
+      });
+      
+      // Navigate to the active call page with the new call data
+      navigate('/active-call', {
+        state: { 
+          callData: newCall,
+          fromStartCall: true 
+        },
         replace: true
       });
     } catch (error) {
-      console.error('Failed to end call:', error);
+      console.error('Failed to start new call:', error);
     }
   };
 
@@ -217,16 +238,6 @@ export const ActiveCall: React.FC = () => {
   return (
     <div className="active-call-page">
       <div className="page-header">
-        <div className="call-status">
-          <div className="status-indicator">
-            <span className="status-dot active"></span>
-            <span>Call in Progress</span>
-          </div>
-          <div className="call-timer">
-            <span className="timer-label">Duration:</span>
-            <span className="timer-value">{liveDuration}</span>
-          </div>
-        </div>
         <div className="call-info">
           <h2>Active Call Details</h2>
           <p>Started at {formatTime(activeCall.startTime)}</p>
@@ -319,17 +330,6 @@ export const ActiveCall: React.FC = () => {
             </div>
           </div>
 
-          <div className="form-section">
-            <h3>Comments</h3>
-            <div className="form-group">
-              <textarea
-                {...register('comments')}
-                placeholder="Add any additional notes about this call..."
-                rows={4}
-                className="comments-textarea"
-              />
-            </div>
-          </div>
 
           <div className="form-actions">
             {updateCallMutation.isError && (
@@ -349,62 +349,73 @@ export const ActiveCall: React.FC = () => {
         </form>
 
         <div className="call-sidebar">
-          <div className="sidebar-card call-summary">
-            <h4>Call Summary</h4>
-            <div className="summary-item">
-              <span>Datatech:</span>
-              <span>{activeCall.datatechName}</span>
+          <div className="sidebar-card call-status-card">
+            <div className="call-status-header">
+              <div className="status-indicator">
+                <span className={`status-dot ${activeCall.endTime ? 'completed' : 'active'}`}></span>
+                <span className={`status-text ${activeCall.endTime ? 'completed' : ''}`}>
+                  {activeCall.endTime ? 'Call Completed' : 'Call in Progress'}
+                </span>
+              </div>
             </div>
-            <div className="summary-item">
-              <span>Email:</span>
-              <span>{activeCall.datatechEmail}</span>
-            </div>
-            <div className="summary-item">
-              <span>Started:</span>
-              <span>{formatTime(activeCall.startTime)}</span>
-            </div>
-            <div className="summary-item">
-              <span>Duration:</span>
-              <span>{liveDuration}</span>
+            <div className="call-timer-display">
+              <span className="timer-label">Duration:</span>
+              <span className="timer-value">{liveDuration}</span>
             </div>
           </div>
 
-          <div className="sidebar-card end-call-section">
-            <h4>End Call</h4>
-            <p>When you're finished with this call, click the button below to end it.</p>
+          {!activeCall.endTime ? (
+            <div className="sidebar-card end-call-section">
+              <h4>End Call</h4>
+              <p>When you're finished with this call, click the button below to end it.</p>
 
-            {!showEndConfirm ? (
+              {!showEndConfirm ? (
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => setShowEndConfirm(true)}
+                >
+                  End Call
+                </button>
+              ) : (
+                <div className="end-call-confirm">
+                  <p><strong>Are you sure?</strong></p>
+                  <p>This will stop the timer and mark the call as completed.</p>
+                  <div className="confirm-actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowEndConfirm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={handleEndCall}
+                      disabled={endCallMutation.isPending || Object.keys(errors).length > 0}
+                    >
+                      {endCallMutation.isPending ? 'Ending...' : 'Confirm End Call'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="sidebar-card start-new-call-section">
+              <h4>Start New Call</h4>
+              <p>This call is complete. Ready to start a new call?</p>
+              
               <button
                 type="button"
-                className="btn btn-danger"
-                onClick={() => setShowEndConfirm(true)}
+                className="btn btn-primary"
+                onClick={handleStartNewCall}
+                disabled={startCallMutation.isPending}
               >
-                End Call
+                {startCallMutation.isPending ? 'Starting...' : 'Start New Call'}
               </button>
-            ) : (
-              <div className="end-call-confirm">
-                <p><strong>Are you sure?</strong></p>
-                <p>This will stop the timer and mark the call as completed.</p>
-                <div className="confirm-actions">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setShowEndConfirm(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={handleEndCall}
-                    disabled={endCallMutation.isPending || Object.keys(errors).length > 0}
-                  >
-                    {endCallMutation.isPending ? 'Ending...' : 'Confirm End Call'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

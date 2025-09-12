@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export const useLiveDuration = (startTime: string | null) => {
+export const useLiveDuration = (startTime: string | null, endTime: string | null = null) => {
   const [duration, setDuration] = useState(0);
 
   useEffect(() => {
@@ -11,8 +11,8 @@ export const useLiveDuration = (startTime: string | null) => {
 
     const calculateDuration = () => {
       const start = new Date(startTime);
-      const now = new Date();
-      const diffInMs = now.getTime() - start.getTime();
+      const end = endTime ? new Date(endTime) : new Date();
+      const diffInMs = end.getTime() - start.getTime();
       const diffInSeconds = Math.floor(diffInMs / 1000);
       setDuration(Math.max(0, diffInSeconds));
     };
@@ -20,11 +20,13 @@ export const useLiveDuration = (startTime: string | null) => {
     // Calculate initial duration
     calculateDuration();
 
-    // Update duration every second for live updates
-    const interval = setInterval(calculateDuration, 1000);
-
-    return () => clearInterval(interval);
-  }, [startTime]);
+    // Only set interval if call is still active (no end time)
+    if (!endTime) {
+      // Update duration every second for live updates
+      const interval = setInterval(calculateDuration, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [startTime, endTime]);
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);

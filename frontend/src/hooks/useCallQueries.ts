@@ -180,15 +180,14 @@ export const useEndCall = () => {
   return useMutation({
     mutationFn: (callId: string) => callsApi.endCall(callId),
     onSuccess: (data) => {
-      // Invalidate active call query
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.calls.active(data.datatechEmail),
-      });
-      // Invalidate specific call detail
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.calls.detail(data.id),
-      });
-      // Invalidate calls list
+      // Clear the active call cache since there's no active call anymore
+      queryClient.setQueryData(
+        queryKeys.calls.active(data.datatechEmail),
+        null
+      );
+      // Update the specific call detail in cache with ended call data
+      queryClient.setQueryData(queryKeys.calls.detail(data.id), data);
+      // Invalidate calls list to refresh history
       queryClient.invalidateQueries({
         queryKey: queryKeys.calls.lists(),
       });
