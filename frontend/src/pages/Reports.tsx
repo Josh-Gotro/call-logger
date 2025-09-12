@@ -99,53 +99,105 @@ export const Reports: React.FC = () => {
     queryFn: () => callsApi.getAllUsers()
   });
 
-  // Build query based on filters
-  const buildReportQuery = () => {
+  // Build date range for filtering
+  const buildDateRange = () => {
     if (isCustomDateRange && filters.startDate && filters.endDate) {
-      const params = new URLSearchParams();
-      params.append('startDate', filters.startDate);
-      params.append('endDate', filters.endDate);
-      if (filters.datatechEmail) params.append('datatechEmail', filters.datatechEmail);
-      if (filters.taskId) params.append('programParentId', filters.taskId);
-      if (filters.subjectId) params.append('subjectId', filters.subjectId);
-      if (filters.isInbound !== null && filters.isInbound !== undefined) params.append('isInbound', filters.isInbound.toString());
-      if (filters.isAgent !== null && filters.isAgent !== undefined) params.append('isAgent', filters.isAgent.toString());
-      if (!user?.email) {
-        throw new Error('User email is required for reports');
-      }
-      params.append('requestedBy', user.email);
-      return `daterange?${params.toString()}`;
+      // Convert date strings to OffsetDateTime format (ISO 8601 with timezone)
+      const startDate = new Date(filters.startDate + 'T00:00:00');
+      const endDate = new Date(filters.endDate + 'T23:59:59');
+      return {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      };
     } else if (filters.period) {
-      const params = new URLSearchParams();
-      if (filters.datatechEmail) params.append('datatechEmail', filters.datatechEmail);
-      if (filters.taskId) params.append('programParentId', filters.taskId);
-      if (filters.subjectId) params.append('subjectId', filters.subjectId);
-      if (filters.isInbound !== null && filters.isInbound !== undefined) params.append('isInbound', filters.isInbound.toString());
-      if (filters.isAgent !== null && filters.isAgent !== undefined) params.append('isAgent', filters.isAgent.toString());
-      if (!user?.email) {
-        throw new Error('User email is required for reports');
+      // Calculate date range based on period
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (filters.period) {
+        case 'TODAY':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case 'THIS_WEEK':
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - now.getDay());
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'THIS_MONTH':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'THIS_QUARTER':
+          const quarter = Math.floor(now.getMonth() / 3);
+          startDate = new Date(now.getFullYear(), quarter * 3, 1);
+          break;
+        case 'THIS_YEAR':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       }
-      params.append('requestedBy', user.email);
-      return `period/${filters.period}?${params.toString()}`;
+      
+      // Set end date to end of today
+      const endDate = new Date(now);
+      endDate.setHours(23, 59, 59, 999);
+      
+      return {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      };
     }
     return null;
   };
 
-  // Fetch report data
-  const { data: reportData, isLoading, error, refetch } = useQuery<LiveReportResult>({
-    queryKey: ['report', filters],
+  // Fetch report data using calls API
+  const { data: callsResponse, isLoading, error, refetch } = useQuery({
+    queryKey: ['filtered-calls', filters, isCustomDateRange],
     queryFn: async () => {
-      const query = buildReportQuery();
-      if (!query) throw new Error('Invalid query parameters');
+      const dateRange = buildDateRange();
+      if (!dateRange) throw new Error('Invalid date range');
 
-      const response = await fetch(`${API_BASE}/reports/${query}`);
-      if (!response.ok) throw new Error('Failed to fetch report');
-      return response.json();
+      return callsApi.getFilteredCalls({
+        userEmail: filters.datatechEmail || undefined,
+        taskId: filters.taskId || undefined,
+        subjectId: filters.subjectId || undefined,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+        size: 1000 // Get more results for reporting
+      });
     },
     enabled: !!(filters.period || (isCustomDateRange && filters.startDate && filters.endDate))
   });
 
-  // Export CSV
+  // Apply client-side filtering for isInbound and isAgent
+  const filteredCalls = callsResponse?.content ? callsResponse.content.filter((call: any) => {
+    // Filter by call direction (isInbound)
+    if (filters.isInbound !== null && filters.isInbound !== undefined) {
+      if (call.isInbound !== filters.isInbound) return false;
+    }
+    
+    // Filter by agent status (isAgent)
+    if (filters.isAgent !== null && filters.isAgent !== undefined) {
+      if (call.isAgent !== filters.isAgent) return false;
+    }
+    
+    return true;
+  }) : [];
+
+  // Transform the response to match the expected LiveReportResult format
+  const reportData = callsResponse ? {
+    calls: filteredCalls,
+    summary: {
+      totalCalls: filteredCalls.length,
+      completedCalls: filteredCalls.filter((call: any) => call.completed).length,
+      inProgressCalls: filteredCalls.filter((call: any) => call.inProgress).length,
+      averageDurationMinutes: 0, // Could calculate this if needed
+      taskBreakdown: {},
+      subjectBreakdown: {}
+    },
+    parameters: filters
+  } : null;
+
+  // Export CSV - simple client-side generation
   const exportCSV = async () => {
     if (!reportData?.calls?.length) {
       alert('No data to export');
@@ -153,20 +205,33 @@ export const Reports: React.FC = () => {
     }
 
     try {
-      const query = buildReportQuery();
-      if (!query) {
-        alert('Please select a valid date range or period');
-        return;
-      }
+      // Generate CSV content
+      const headers = [
+        'ID', 'DataTech Name', 'DataTech Email', 'Start Time', 'End Time', 
+        'Duration (minutes)', 'Task', 'Subject', 'Is Inbound', 'Is Agent', 
+        'Comments', 'Created At'
+      ];
+      
+      const csvContent = [
+        headers.join(','),
+        ...reportData.calls.map(call => [
+          call.id || '',
+          call.datatechName || '',
+          call.datatechEmail || '',
+          call.startTime || '',
+          call.endTime || '',
+          call.durationMinutes || '',
+          call.taskName || '',
+          call.subjectName || '',
+          call.isInbound || '',
+          call.isAgent || '',
+          call.comments ? `"${call.comments.replace(/"/g, '""')}"` : '',
+          call.createdAt || ''
+        ].join(','))
+      ].join('\n');
 
-      const url = query.startsWith('period/')
-        ? `${API_BASE}/reports/export/csv/${filters.period}?${query.split('?')[1] || ''}`
-        : `${API_BASE}/reports/export/csv/daterange?${query.split('?')[1] || ''}`;
-
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to export CSV');
-
-      const blob = await response.blob();
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
@@ -345,24 +410,6 @@ export const Reports: React.FC = () => {
               {subjectOptions.map(subject => (
                 <option key={subject.id} value={subject.id}>
                   {subject.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Subject Filter */}
-          <div className="filter-group">
-            <label>Subject</label>
-            <select
-              value={filters.subjectId || ''}
-              onChange={(e) => handleFilterChange('subjectId', e.target.value)}
-              className="form-input"
-              title="Select a subject"
-            >
-              <option value="">All Subjects</option>
-              {subjects.map(subj => (
-                <option key={subj.id} value={subj.id}>
-                  {subj.name}
                 </option>
               ))}
             </select>
