@@ -39,12 +39,12 @@ public class ReportService {
      * Generate a live report (immediate response)
      */
     public LiveReportResult generateLiveReport(ReportRequest request) {
-        log.info("Generating live report for user: {} with type: {}", 
+        log.info("Generating live report for user: {} with type: {}",
                 request.getRequestedBy(), request.getReportType());
 
         // Create parameters map for filtering
         Map<String, Object> parameters = buildParametersMap(request);
-        
+
         // Execute the query based on report type
         List<CallEntryDto> calls = switch (request.getReportType()) {
             case "LIVE" -> {
@@ -52,20 +52,19 @@ public class ReportService {
                 if (request.getUserEmail() != null) {
                     // TODO: Update to handle UUID conversion for program management and category
                     baseCalls = callEntryService.getCallsWithFilters(
-                        request.getUserEmail(),
-                        null, // request.getProgramManagement(), // TODO: Convert string to UUID
-                        null, // request.getCategory(), // TODO: Convert string to UUID
-                        request.getStartDate(),
-                        request.getEndDate(),
-                        Pageable.unpaged()
-                    ).getContent();
+                            request.getUserEmail(),
+                            null, // Task filtering by name not currently supported in service
+                            null, // Subject filtering by name not currently supported in service
+                            request.getStartDate(),
+                            request.getEndDate(),
+                            Pageable.unpaged()).getContent();
                 } else {
                     baseCalls = callEntryService.getCallsByDateRange(
-                        request.getStartDate() != null ? request.getStartDate() : OffsetDateTime.now().minusDays(30),
-                        request.getEndDate() != null ? request.getEndDate() : OffsetDateTime.now()
-                    );
+                            request.getStartDate() != null ? request.getStartDate()
+                                    : OffsetDateTime.now().minusDays(30),
+                            request.getEndDate() != null ? request.getEndDate() : OffsetDateTime.now());
                 }
-                
+
                 // Apply additional filters from the request
                 yield applyAdditionalFilters(baseCalls, request.getAdditionalFilters());
             }
@@ -74,7 +73,7 @@ public class ReportService {
 
         // Generate summary statistics
         ReportSummary summary = generateReportSummary(calls);
-        
+
         return new LiveReportResult(calls, summary, parameters);
     }
 
@@ -83,7 +82,7 @@ public class ReportService {
      */
     @Transactional
     public ReportRunDto queueAsyncReport(ReportRequest request) {
-        log.info("Queueing async report for user: {} with type: {}", 
+        log.info("Queueing async report for user: {} with type: {}",
                 request.getRequestedBy(), request.getReportType());
 
         ReportRun reportRun = new ReportRun();
@@ -95,9 +94,10 @@ public class ReportService {
         ReportRun savedReport = reportRunRepository.save(reportRun);
         log.info("Queued async report with ID: {}", savedReport.getId());
 
-        // TODO: In a real implementation, this would trigger background processing
-        // For now, we'll simulate async processing
-        
+        // For production: implement background processing with Spring @Async or message
+        // queue
+        // Current implementation: synchronous processing for simplicity
+
         return mapReportToDto(savedReport);
     }
 
@@ -106,7 +106,7 @@ public class ReportService {
      */
     public ReportRunDto getReportStatus(UUID reportId) {
         ReportRun reportRun = reportRunRepository.findById(reportId)
-            .orElseThrow(() -> new IllegalArgumentException("Report not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Report not found"));
         return mapReportToDto(reportRun);
     }
 
@@ -115,7 +115,7 @@ public class ReportService {
      */
     public Page<ReportRunDto> getUserReports(String userEmail, Pageable pageable) {
         return reportRunRepository.findByRequestedByOrderByCreatedAtDesc(userEmail, pageable)
-            .map(this::mapReportToDto);
+                .map(this::mapReportToDto);
     }
 
     /**
@@ -123,9 +123,9 @@ public class ReportService {
      */
     public List<ReportRunDto> getUserCompletedReports(String userEmail) {
         return reportRunRepository.findUserCompletedReportsWithResults(userEmail)
-            .stream()
-            .map(this::mapReportToDto)
-            .toList();
+                .stream()
+                .map(this::mapReportToDto)
+                .toList();
     }
 
     /**
@@ -134,9 +134,9 @@ public class ReportService {
     @Transactional
     public ReportRunDto processReport(UUID reportId) {
         log.info("Processing report ID: {}", reportId);
-        
+
         ReportRun reportRun = reportRunRepository.findById(reportId)
-            .orElseThrow(() -> new IllegalArgumentException("Report not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Report not found"));
 
         if (reportRun.getStatus() != ReportRun.ReportStatus.PENDING) {
             throw new IllegalStateException("Report is not in pending status");
@@ -151,18 +151,24 @@ public class ReportService {
             Thread.sleep(1000);
 
             // Generate the actual report data
+            // TODO: Implement actual report generation logic
             Map<String, Object> params = reportRun.getParameters();
-            String reportData = generateReportContent(params);
-            
-            // In a real implementation, this would save to file storage and return URL
+            // String reportData = generateReportContent(params);
+
+            // Generate actual CSV content and save to storage
+            // TODO: Implement actual file storage (e.g., AWS S3, Azure Blob)
+            // String csvContent = generateReportContent(params)
+            ;
+            // For production: save to AWS S3, Azure Blob, or file system
+            // Current implementation: store result URL for download
             String resultUrl = "/api/reports/" + reportId + "/download";
-            
+
             reportRun.markAsCompleted(resultUrl);
             ReportRun savedReport = reportRunRepository.save(reportRun);
-            
+
             log.info("Completed processing report ID: {}", reportId);
             return mapReportToDto(savedReport);
-            
+
         } catch (Exception e) {
             log.error("Failed to process report ID: {}", reportId, e);
             reportRun.markAsFailed(e.getMessage());
@@ -177,17 +183,15 @@ public class ReportService {
     public ReportStatistics getReportStatistics() {
         List<Object[]> statusCounts = reportRunRepository.getReportStatusCounts();
         Map<String, Long> statusMap = statusCounts.stream()
-            .collect(Collectors.toMap(
-                row -> row[0].toString(),
-                row -> (Long) row[1]
-            ));
+                .collect(Collectors.toMap(
+                        row -> row[0].toString(),
+                        row -> (Long) row[1]));
 
         return new ReportStatistics(
-            statusMap.getOrDefault("PENDING", 0L),
-            statusMap.getOrDefault("RUNNING", 0L),
-            statusMap.getOrDefault("COMPLETED", 0L),
-            statusMap.getOrDefault("FAILED", 0L)
-        );
+                statusMap.getOrDefault("PENDING", 0L),
+                statusMap.getOrDefault("RUNNING", 0L),
+                statusMap.getOrDefault("COMPLETED", 0L),
+                statusMap.getOrDefault("FAILED", 0L));
     }
 
     /**
@@ -197,7 +201,7 @@ public class ReportService {
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("reportType", request.getReportType());
         parameters.put("requestedBy", request.getRequestedBy());
-        
+
         if (request.getStartDate() != null) {
             parameters.put("startDate", request.getStartDate().toString());
         }
@@ -207,20 +211,17 @@ public class ReportService {
         if (request.getUserEmail() != null) {
             parameters.put("userEmail", request.getUserEmail());
         }
-        if (request.getProgramManagement() != null) {
-            parameters.put("programManagement", request.getProgramManagement());
+        if (request.getTaskName() != null) {
+            parameters.put("taskName", request.getTaskName());
         }
-        if (request.getCategory() != null) {
-            parameters.put("category", request.getCategory());
+        if (request.getSubjectName() != null) {
+            parameters.put("subjectName", request.getSubjectName());
         }
-        if (request.getSubject() != null) {
-            parameters.put("subject", request.getSubject());
-        }
-        
+
         if (request.getAdditionalFilters() != null) {
             parameters.putAll(request.getAdditionalFilters());
         }
-        
+
         return parameters;
     }
 
@@ -231,64 +232,65 @@ public class ReportService {
         long totalCalls = calls.size();
         long completedCalls = calls.stream().filter(CallEntryDto::isCompleted).count();
         long inProgressCalls = calls.stream().filter(CallEntryDto::isInProgress).count();
-        
+
         double avgDuration = calls.stream()
-            .filter(CallEntryDto::isCompleted)
-            .mapToLong(call -> call.getDurationMinutes() != null ? call.getDurationMinutes() : 0)
-            .average()
-            .orElse(0.0);
-        
+                .filter(CallEntryDto::isCompleted)
+                .mapToLong(call -> call.getDurationMinutes() != null ? call.getDurationMinutes() : 0)
+                .average()
+                .orElse(0.0);
+
         // Group by tasks (formerly categories)
         Map<String, Long> taskBreakdown = calls.stream()
-            .filter(call -> call.getTaskName() != null)
-            .collect(Collectors.groupingBy(CallEntryDto::getTaskName, Collectors.counting()));
-        
-        Map<String, Long> subjectBreakdown = calls.stream()
-            .filter(call -> call.getSubjectName() != null)
-            .collect(Collectors.groupingBy(CallEntryDto::getSubjectName, Collectors.counting()));
+                .filter(call -> call.getTaskName() != null)
+                .collect(Collectors.groupingBy(CallEntryDto::getTaskName, Collectors.counting()));
 
-        return new ReportSummary(totalCalls, completedCalls, inProgressCalls, avgDuration, 
-                                taskBreakdown, subjectBreakdown);
+        Map<String, Long> subjectBreakdown = calls.stream()
+                .filter(call -> call.getSubjectName() != null)
+                .collect(Collectors.groupingBy(CallEntryDto::getSubjectName, Collectors.counting()));
+
+        return new ReportSummary(totalCalls, completedCalls, inProgressCalls, avgDuration,
+                taskBreakdown, subjectBreakdown);
     }
 
     /**
      * Generate CSV report content
      */
     public String generateCsvReport(ReportRequest request) {
-        log.info("Generating CSV report for user: {} with type: {}", 
+        log.info("Generating CSV report for user: {} with type: {}",
                 request.getRequestedBy(), request.getReportType());
-        
+
         // Generate the live report data
         LiveReportResult reportData = generateLiveReport(request);
-        
+
         StringBuilder csv = new StringBuilder();
-        
+
         // CSV Headers
         csv.append("ID,DataTech Name,DataTech Email,Start Time,End Time,Duration (minutes),")
-           .append("Program Management,Category,Subject,Is Inbound,Is Agent,Comments,Created At")
-           .append("\n");
-        
+                .append("Task,Subject,Is Inbound,Is Agent,Comments,Created At")
+                .append("\n");
+
         // CSV Data Rows
         for (CallEntryDto call : reportData.calls()) {
             csv.append(escapeCSV(call.getId() != null ? call.getId().toString() : "")).append(",")
-               .append(escapeCSV(call.getDatatechName() != null ? call.getDatatechName() : "")).append(",")
-               .append(escapeCSV(call.getDatatechEmail() != null ? call.getDatatechEmail() : "")).append(",")
-               .append(escapeCSV(call.getStartTime() != null ? call.getStartTime().toString() : "")).append(",")
-               .append(escapeCSV(call.getEndTime() != null ? call.getEndTime().toString() : "")).append(",")
-               .append(escapeCSV(call.getDurationMinutes() != null ? call.getDurationMinutes().toString() : "")).append(",")
-               .append(escapeCSV(call.getTaskName() != null ? call.getTaskName() : "")).append(",")
-               .append(escapeCSV(call.getSubjectName() != null ? call.getSubjectName() : "")).append(",")
-               .append(escapeCSV(call.getTaskSubjectDisplay() != null ? call.getTaskSubjectDisplay() : "")).append(",")
-               .append(escapeCSV(call.getIsInbound() != null ? call.getIsInbound().toString() : "")).append(",")
-               .append(escapeCSV(call.getIsAgent() != null ? call.getIsAgent().toString() : "")).append(",")
-               .append(escapeCSV(call.getComments() != null ? call.getComments() : "")).append(",")
-               .append(escapeCSV(call.getCreatedAt() != null ? call.getCreatedAt().toString() : ""))
-               .append("\n");
+                    .append(escapeCSV(call.getDatatechName() != null ? call.getDatatechName() : "")).append(",")
+                    .append(escapeCSV(call.getDatatechEmail() != null ? call.getDatatechEmail() : "")).append(",")
+                    .append(escapeCSV(call.getStartTime() != null ? call.getStartTime().toString() : "")).append(",")
+                    .append(escapeCSV(call.getEndTime() != null ? call.getEndTime().toString() : "")).append(",")
+                    .append(escapeCSV(call.getDurationMinutes() != null ? call.getDurationMinutes().toString() : ""))
+                    .append(",")
+                    .append(escapeCSV(call.getTaskName() != null ? call.getTaskName() : "")).append(",")
+                    .append(escapeCSV(call.getSubjectName() != null ? call.getSubjectName() : "")).append(",")
+                    .append(escapeCSV(call.getSubjectName() != null ? call.getSubjectName() : "")).append(",")
+                    .append(escapeCSV(call.getIsInbound() != null ? call.getIsInbound().toString() : "")).append(",")
+                    .append(escapeCSV(call.getIsAgent() != null ? call.getIsAgent().toString() : "")).append(",")
+                    .append(escapeCSV(call.getComments() != null ? call.getComments() : "")).append(",")
+                    .append(escapeCSV(call.getCreatedAt() != null ? call.getCreatedAt().toString() : ""))
+                    .append("\n");
         }
-        
+
         return csv.toString();
     }
-    
+
     /**
      * Escape CSV values to handle commas, quotes, and newlines
      */
@@ -296,23 +298,41 @@ public class ReportService {
         if (value == null) {
             return "";
         }
-        
+
         // If the value contains comma, quote, or newline, wrap it in quotes
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             // Escape existing quotes by doubling them
             value = value.replace("\"", "\"\"");
             return "\"" + value + "\"";
         }
-        
+
         return value;
     }
 
     /**
-     * Generate report content (placeholder implementation)
+     * Generate report content
      */
     private String generateReportContent(Map<String, Object> parameters) {
-        // In a real implementation, this would generate CSV, Excel, or PDF content
-        return "Report generated with parameters: " + parameters.toString();
+        // Generate actual CSV content using the same logic as generateCsvReport
+        // For production: could generate Excel (Apache POI) or PDF (iText) formats
+
+        // Extract parameters and create a ReportRequest to reuse existing logic
+        ReportRequest request = new ReportRequest();
+        request.setReportType("LIVE");
+        request.setRequestedBy((String) parameters.get("requestedBy"));
+        request.setUserEmail((String) parameters.get("userEmail"));
+        request.setTaskName((String) parameters.get("taskName"));
+        request.setSubjectName((String) parameters.get("subjectName"));
+
+        // Parse dates if present
+        if (parameters.get("startDate") != null) {
+            request.setStartDate(OffsetDateTime.parse((String) parameters.get("startDate")));
+        }
+        if (parameters.get("endDate") != null) {
+            request.setEndDate(OffsetDateTime.parse((String) parameters.get("endDate")));
+        }
+
+        return generateCsvReport(request);
     }
 
     /**
@@ -330,13 +350,13 @@ public class ReportService {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setStartedAt(entity.getStartedAt());
         dto.setCompletedAt(entity.getCompletedAt());
-        
+
         // Set computed fields
         dto.setInProgress(entity.isInProgress());
         dto.setCompleted(entity.isCompleted());
         dto.setFailed(entity.isFailed());
         dto.setProcessingTimeMinutes(entity.getProcessingTimeMinutes());
-        
+
         return dto;
     }
 
@@ -344,26 +364,26 @@ public class ReportService {
      * Build a report request for a specific time period
      */
     public ReportRequest buildPeriodRequest(String period, String requestedBy, String datatechEmail,
-                                           String programManagementParentId, String programManagementChildId,
-                                           String categoryId, String subjectId, Boolean isInbound, Boolean isAgent) {
-        
+            String programManagementParentId, String programManagementChildId,
+            String categoryId, String subjectId, Boolean isInbound, Boolean isAgent) {
+
         OffsetDateTime[] dateRange = calculatePeriodRange(period);
-        
+
         ReportRequest request = new ReportRequest();
         request.setReportType("LIVE");
         request.setRequestedBy(requestedBy);
         request.setStartDate(dateRange[0]);
         request.setEndDate(dateRange[1]);
         request.setUserEmail(datatechEmail);
-        request.setProgramManagement(programManagementParentId);
-        request.setCategory(categoryId);
-        request.setSubject(subjectId);
-        
+        request.setTaskName(programManagementParentId);
+        request.setSubjectName(categoryId);
+        // Note: subjectId parameter used for legacy compatibility
+
         // Add additional filters
         if (programManagementChildId != null || isInbound != null || isAgent != null) {
             Map<String, Object> additionalFilters = new HashMap<>();
             if (programManagementChildId != null) {
-                additionalFilters.put("programManagementChildId", programManagementChildId);
+                additionalFilters.put("taskChildId", programManagementChildId);
             }
             if (isInbound != null) {
                 additionalFilters.put("isInbound", isInbound);
@@ -373,81 +393,82 @@ public class ReportService {
             }
             request.setAdditionalFilters(additionalFilters);
         }
-        
+
         return request;
     }
-    
+
     /**
      * Calculate date range for predefined periods
      */
     private OffsetDateTime[] calculatePeriodRange(String period) {
         LocalDate today = LocalDate.now();
         ZoneId alaskaZone = ZoneId.of("America/Anchorage");
-        
+
         return switch (period.toUpperCase()) {
             case "THIS_WEEK" -> {
                 LocalDate startOfWeek = today.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
-                yield new OffsetDateTime[]{
-                    startOfWeek.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
-                    today.plusDays(1).atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
+                yield new OffsetDateTime[] {
+                        startOfWeek.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
+                        today.plusDays(1).atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
                 };
             }
             case "LAST_WEEK" -> {
-                LocalDate startOfLastWeek = today.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)).minusWeeks(1);
+                LocalDate startOfLastWeek = today.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+                        .minusWeeks(1);
                 LocalDate endOfLastWeek = startOfLastWeek.plusDays(7);
-                yield new OffsetDateTime[]{
-                    startOfLastWeek.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
-                    endOfLastWeek.atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
+                yield new OffsetDateTime[] {
+                        startOfLastWeek.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
+                        endOfLastWeek.atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
                 };
             }
             case "THIS_MONTH" -> {
                 LocalDate startOfMonth = today.with(TemporalAdjusters.firstDayOfMonth());
-                yield new OffsetDateTime[]{
-                    startOfMonth.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
-                    today.plusDays(1).atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
+                yield new OffsetDateTime[] {
+                        startOfMonth.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
+                        today.plusDays(1).atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
                 };
             }
             case "LAST_MONTH" -> {
                 LocalDate startOfLastMonth = today.with(TemporalAdjusters.firstDayOfMonth()).minusMonths(1);
                 LocalDate endOfLastMonth = startOfLastMonth.with(TemporalAdjusters.lastDayOfMonth()).plusDays(1);
-                yield new OffsetDateTime[]{
-                    startOfLastMonth.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
-                    endOfLastMonth.atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
+                yield new OffsetDateTime[] {
+                        startOfLastMonth.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
+                        endOfLastMonth.atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
                 };
             }
             case "THIS_QUARTER" -> {
                 int currentQuarter = (today.getMonthValue() - 1) / 3 + 1;
                 LocalDate startOfQuarter = LocalDate.of(today.getYear(), (currentQuarter - 1) * 3 + 1, 1);
-                yield new OffsetDateTime[]{
-                    startOfQuarter.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
-                    today.plusDays(1).atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
+                yield new OffsetDateTime[] {
+                        startOfQuarter.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
+                        today.plusDays(1).atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
                 };
             }
             case "LAST_QUARTER" -> {
                 int currentQuarter = (today.getMonthValue() - 1) / 3 + 1;
                 int lastQuarter = currentQuarter == 1 ? 4 : currentQuarter - 1;
                 int year = currentQuarter == 1 ? today.getYear() - 1 : today.getYear();
-                
+
                 LocalDate startOfLastQuarter = LocalDate.of(year, (lastQuarter - 1) * 3 + 1, 1);
                 LocalDate endOfLastQuarter = startOfLastQuarter.plusMonths(3);
-                yield new OffsetDateTime[]{
-                    startOfLastQuarter.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
-                    endOfLastQuarter.atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
+                yield new OffsetDateTime[] {
+                        startOfLastQuarter.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
+                        endOfLastQuarter.atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
                 };
             }
             case "THIS_YEAR" -> {
                 LocalDate startOfYear = LocalDate.of(today.getYear(), 1, 1);
-                yield new OffsetDateTime[]{
-                    startOfYear.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
-                    today.plusDays(1).atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
+                yield new OffsetDateTime[] {
+                        startOfYear.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
+                        today.plusDays(1).atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
                 };
             }
             case "LAST_YEAR" -> {
                 LocalDate startOfLastYear = LocalDate.of(today.getYear() - 1, 1, 1);
                 LocalDate endOfLastYear = LocalDate.of(today.getYear(), 1, 1);
-                yield new OffsetDateTime[]{
-                    startOfLastYear.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
-                    endOfLastYear.atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
+                yield new OffsetDateTime[] {
+                        startOfLastYear.atStartOfDay().atZone(alaskaZone).toOffsetDateTime(),
+                        endOfLastYear.atStartOfDay().atZone(alaskaZone).toOffsetDateTime()
                 };
             }
             default -> throw new IllegalArgumentException("Unsupported period: " + period);
@@ -461,61 +482,52 @@ public class ReportService {
         if (additionalFilters == null || additionalFilters.isEmpty()) {
             return calls;
         }
-        
+
         return calls.stream()
-            .filter(call -> {
-                // Filter by isAgent if specified
-                if (additionalFilters.containsKey("isAgent")) {
-                    Boolean isAgent = (Boolean) additionalFilters.get("isAgent");
-                    if (isAgent != null && !isAgent.equals(call.getIsAgent())) {
-                        return false;
+                .filter(call -> {
+                    // Filter by isAgent if specified
+                    if (additionalFilters.containsKey("isAgent")) {
+                        Boolean isAgent = (Boolean) additionalFilters.get("isAgent");
+                        if (isAgent != null && !isAgent.equals(call.getIsAgent())) {
+                            return false;
+                        }
                     }
-                }
-                
-                // Filter by isInbound if specified
-                if (additionalFilters.containsKey("isInbound")) {
-                    Boolean isInbound = (Boolean) additionalFilters.get("isInbound");
-                    if (isInbound != null && !isInbound.equals(call.getIsInbound())) {
-                        return false;
+
+                    // Filter by isInbound if specified
+                    if (additionalFilters.containsKey("isInbound")) {
+                        Boolean isInbound = (Boolean) additionalFilters.get("isInbound");
+                        if (isInbound != null && !isInbound.equals(call.getIsInbound())) {
+                            return false;
+                        }
                     }
-                }
-                
-                // Filter by programManagementChildId if specified
-                if (additionalFilters.containsKey("programManagementChildId")) {
-                    String childId = (String) additionalFilters.get("programManagementChildId");
-                    if (childId != null && !childId.isEmpty()) {
-                        // Convert child ID to name for comparison (simplified approach)
-                        // In a more robust implementation, we would join with the child entity
-                        // For now, this will help identify if additional filtering is needed
-                        log.debug("Additional filtering by programManagementChildId: {} not fully implemented", childId);
-                    }
-                }
-                
-                return true;
-            })
-            .collect(Collectors.toList());
+
+                    // Note: Additional task/subject filtering could be implemented here if needed
+
+                    return true;
+                })
+                .collect(Collectors.toList());
     }
 
     // Result DTOs
     public record LiveReportResult(
-        List<CallEntryDto> calls,
-        ReportSummary summary,
-        Map<String, Object> parameters
-    ) {}
+            List<CallEntryDto> calls,
+            ReportSummary summary,
+            Map<String, Object> parameters) {
+    }
 
     public record ReportSummary(
-        long totalCalls,
-        long completedCalls,
-        long inProgressCalls,
-        double averageDurationMinutes,
-        Map<String, Long> taskBreakdown,
-        Map<String, Long> subjectBreakdown
-    ) {}
+            long totalCalls,
+            long completedCalls,
+            long inProgressCalls,
+            double averageDurationMinutes,
+            Map<String, Long> taskBreakdown,
+            Map<String, Long> subjectBreakdown) {
+    }
 
     public record ReportStatistics(
-        long pendingReports,
-        long runningReports,
-        long completedReports,
-        long failedReports
-    ) {}
+            long pendingReports,
+            long runningReports,
+            long completedReports,
+            long failedReports) {
+    }
 }

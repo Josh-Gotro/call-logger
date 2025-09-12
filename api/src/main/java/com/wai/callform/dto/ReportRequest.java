@@ -24,9 +24,8 @@ public class ReportRequest {
     private OffsetDateTime endDate;
 
     private String userEmail;
-    private String programManagement;
-    private String category;
-    private String subject;
+    private String taskName;
+    private String subjectName;
 
     // Additional parameters for flexible filtering
     private Map<String, Object> additionalFilters;

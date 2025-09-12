@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 
 /**
  * Validates that the subject is valid for the selected task in a CallEntry.
- * This replaces the old ProgramManagementHierarchyValidator.
  */
 @Component
 @RequiredArgsConstructor
@@ -35,16 +34,15 @@ public class TaskSubjectValidator implements ConstraintValidator<ValidTaskSubjec
 
         // If both task and subject are selected, validate the relationship
         boolean isValid = taskSubjectService.isSubjectValidForTask(
-            callEntry.getTask().getId(), 
-            callEntry.getSubject().getId()
-        );
+                callEntry.getTask().getId(),
+                callEntry.getSubject().getId());
 
         if (!isValid) {
             context.disableDefaultConstraintViolation();
             context.buildConstraintViolationWithTemplate(
-                "Selected subject '" + callEntry.getSubject().getName() + 
-                "' is not valid for task '" + callEntry.getTask().getName() + "'"
-            ).addConstraintViolation();
+                    "Selected subject '" + callEntry.getSubject().getName() +
+                            "' is not valid for task '" + callEntry.getTask().getName() + "'")
+                    .addConstraintViolation();
             return false;
         }
 

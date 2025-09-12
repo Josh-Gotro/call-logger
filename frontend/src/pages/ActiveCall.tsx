@@ -90,7 +90,7 @@ export const ActiveCall: React.FC = () => {
     if (activeCall) {
       // Check if this is a new call (no task/subject set) - use frontend defaults
       const isNewCall = !activeCall.taskName && !activeCall.subjectName;
-      
+
       if (isNewCall) {
         // For new calls, use our preferred defaults regardless of backend values
         setValue('isInbound', 'yes');
@@ -100,10 +100,10 @@ export const ActiveCall: React.FC = () => {
         setValue('isInbound', activeCall.isInbound ? 'yes' : 'no');
         setValue('isAgent', activeCall.isAgent ? 'yes' : 'no');
       }
-      
+
       setValue('comments', activeCall.comments || '');
 
-      // Note: We need to find IDs from the display names
+      // TODO: We need to find IDs from the display names
       // This is a limitation - the API returns names but we need IDs for form submission
       // For existing calls, we'll try to match by name
 
@@ -209,7 +209,7 @@ export const ActiveCall: React.FC = () => {
   }
 
   // Task-Subject model: Get selected task and check if it has subjects
-  const selectedTask = selectedTaskId && tasks.data ? 
+  const selectedTask = selectedTaskId && tasks.data ?
     tasks.data.find(t => t.id === selectedTaskId) : null;
   const selectedTaskHasSubjects = selectedTask?.hasSubjects || false;
   const availableSubjects = selectedTask?.subjects || [];

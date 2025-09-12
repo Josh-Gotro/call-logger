@@ -76,14 +76,15 @@ export const useUser = () => {
 // Helper hook to require authentication
 export const useRequireAuth = () => {
   const { user, isAuthenticated } = useUser();
-  
+
   useEffect(() => {
     if (!isAuthenticated) {
-      // In a real app, redirect to login page
+      // TODO: Azure AD Authentication flow
+      // In production app, redirect to login page
       // For now, we'll use a simple prompt
       const name = prompt('Please enter your name:');
       const email = prompt('Please enter your email:');
-      
+
       if (name && email) {
         // Simple email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

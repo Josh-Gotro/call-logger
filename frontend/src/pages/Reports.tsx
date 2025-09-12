@@ -5,6 +5,7 @@ import { useUser } from '../contexts/UserContext';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { Card } from '../components/ui/Card';
 import { useTasks, useSubjects } from '../hooks/useReferenceQueries';
+import { callsApi } from '../api/calls.api';
 import './Reports.css';
 
 interface ReportFilters {
@@ -92,18 +93,10 @@ export const Reports: React.FC = () => {
     name: subject.name
   }));
 
-  // Fetch datatech users
+  // Fetch datatech users from API
   const { data: datatechUsers = [] } = useQuery<string[]>({
     queryKey: ['datatech-users'],
-    queryFn: async () => {
-      // For now, return the known users - in a real app this would be an API call
-      return [
-        'josh.gauthreaux@wostmann.com',
-        'asimov@wostmann.com',
-        'seldon@wostmann.com',
-        'mule@wostmann.com'
-      ];
-    }
+    queryFn: () => callsApi.getAllUsers()
   });
 
   // Build query based on filters
@@ -117,7 +110,10 @@ export const Reports: React.FC = () => {
       if (filters.subjectId) params.append('subjectId', filters.subjectId);
       if (filters.isInbound !== null && filters.isInbound !== undefined) params.append('isInbound', filters.isInbound.toString());
       if (filters.isAgent !== null && filters.isAgent !== undefined) params.append('isAgent', filters.isAgent.toString());
-      params.append('requestedBy', user?.email || 'josh.gauthreaux@wostmann.com');
+      if (!user?.email) {
+        throw new Error('User email is required for reports');
+      }
+      params.append('requestedBy', user.email);
       return `daterange?${params.toString()}`;
     } else if (filters.period) {
       const params = new URLSearchParams();
@@ -126,7 +122,10 @@ export const Reports: React.FC = () => {
       if (filters.subjectId) params.append('subjectId', filters.subjectId);
       if (filters.isInbound !== null && filters.isInbound !== undefined) params.append('isInbound', filters.isInbound.toString());
       if (filters.isAgent !== null && filters.isAgent !== undefined) params.append('isAgent', filters.isAgent.toString());
-      params.append('requestedBy', user?.email || 'josh.gauthreaux@wostmann.com');
+      if (!user?.email) {
+        throw new Error('User email is required for reports');
+      }
+      params.append('requestedBy', user.email);
       return `period/${filters.period}?${params.toString()}`;
     }
     return null;

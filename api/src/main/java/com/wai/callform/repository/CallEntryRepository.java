@@ -97,4 +97,8 @@ public interface CallEntryRepository extends JpaRepository<CallEntry, UUID> {
     @Query("SELECT c FROM CallEntry c WHERE c.startTime >= :cutoffDate ORDER BY c.startTime DESC")
     List<CallEntry> findRecentCalls(@Param("cutoffDate") OffsetDateTime cutoffDate, Pageable pageable);
 
+    // Get distinct user emails for user dropdown
+    @Query("SELECT DISTINCT c.datatechEmail FROM CallEntry c ORDER BY c.datatechEmail")
+    List<String> findDistinctDatatechEmails();
+
 }

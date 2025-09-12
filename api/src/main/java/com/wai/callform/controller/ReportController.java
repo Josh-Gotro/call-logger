@@ -63,7 +63,7 @@ public class ReportController {
             @RequestParam(required = false) String subjectId,
             @RequestParam(required = false) Boolean isInbound,
             @RequestParam(required = false) Boolean isAgent,
-            @RequestParam(defaultValue = "josh.gauthreaux@wostmann.com") String requestedBy) {
+            @RequestParam String requestedBy) {
         
         log.info("Generating {} report for user: {}", period, requestedBy);
         
@@ -95,7 +95,7 @@ public class ReportController {
             @RequestParam(required = false) String subjectId,
             @RequestParam(required = false) Boolean isInbound,
             @RequestParam(required = false) Boolean isAgent,
-            @RequestParam(defaultValue = "josh.gauthreaux@wostmann.com") String requestedBy) {
+            @RequestParam String requestedBy) {
         
         log.info("Generating date range report ({} to {}) for user: {}", startDate, endDate, requestedBy);
         
@@ -106,9 +106,9 @@ public class ReportController {
             request.setStartDate(startDate.atStartOfDay().atZone(ZoneId.of("America/Anchorage")).toOffsetDateTime());
             request.setEndDate(endDate.plusDays(1).atStartOfDay().atZone(ZoneId.of("America/Anchorage")).toOffsetDateTime());
             request.setUserEmail(datatechEmail);
-            request.setProgramManagement(programManagementParentId);
-            request.setCategory(categoryId);
-            request.setSubject(subjectId);
+            request.setTaskName(programManagementParentId);
+            request.setSubjectName(categoryId);
+            // Note: subjectId parameter used for legacy compatibility
             
             // Add additional filters
             if (programManagementChildId != null || isInbound != null || isAgent != null) {
@@ -175,7 +175,7 @@ public class ReportController {
             @RequestParam(required = false) String subjectId,
             @RequestParam(required = false) Boolean isInbound,
             @RequestParam(required = false) Boolean isAgent,
-            @RequestParam(defaultValue = "josh.gauthreaux@wostmann.com") String requestedBy) {
+            @RequestParam String requestedBy) {
         
         log.info("Exporting {} CSV report for user: {}", period, requestedBy);
         
@@ -245,7 +245,7 @@ public class ReportController {
      */
     @GetMapping("/history")
     public ResponseEntity<Page<ReportRunDto>> getUserReports(
-            @RequestParam(defaultValue = "josh.gauthreaux@wostmann.com") String userEmail,
+            @RequestParam String userEmail,
             Pageable pageable) {
         try {
             Page<ReportRunDto> result = reportService.getUserReports(userEmail, pageable);

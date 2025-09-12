@@ -77,4 +77,8 @@ export const callsApi = {
         params: { startDate, endDate },
       })
       .then(extractData),
+
+  // Get all unique user emails
+  getAllUsers: (): Promise<string[]> =>
+    apiClient.get('/calls/users').then(extractData),
 };

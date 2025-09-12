@@ -146,4 +146,11 @@ public class CallEntryController {
             return ResponseEntity.noContent().build();
         }
     }
+
+    @GetMapping("/users")
+    public ResponseEntity<List<String>> getAllUsers() {
+        log.debug("Getting all unique user emails");
+        List<String> users = callEntryService.getAllUniqueUserEmails();
+        return ResponseEntity.ok(users);
+    }
 }
