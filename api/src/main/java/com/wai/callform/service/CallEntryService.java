@@ -226,10 +226,11 @@ public class CallEntryService {
                 .collect(java.util.stream.Collectors.toList());
 
         // Create new Page with filtered results
+        // Use the original total count from the database query, not the filtered page size
         return new org.springframework.data.domain.PageImpl<>(
                 filteredDtos,
                 pageable,
-                filteredDtos.size());
+                result.getTotalElements());
     }
 
     // Note: Distinct values for dropdowns are now handled by ReferenceDataService
