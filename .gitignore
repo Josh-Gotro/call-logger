@@ -5,6 +5,7 @@
 
 # Development files
 ignore/
+**/.claude/
 
 # IDE
 .vscode/
