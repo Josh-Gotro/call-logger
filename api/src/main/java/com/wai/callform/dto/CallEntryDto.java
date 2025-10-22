@@ -43,6 +43,18 @@ public class CallEntryDto {
 
     private String comments;
 
+    // PBX integration fields
+    @Size(max = 50, message = "Phone number must not exceed 50 characters")
+    private String phoneNumber;
+
+    @Size(max = 100, message = "PBX call ID must not exceed 100 characters")
+    private String pbxCallId;
+
+    private Boolean isPbxOriginated;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    private OffsetDateTime pbxDataReceivedAt;
+
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
     private OffsetDateTime createdAt;
 

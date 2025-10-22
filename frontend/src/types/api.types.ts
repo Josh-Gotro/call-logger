@@ -12,6 +12,10 @@ export interface CallEntry {
   subjectName: string | null;
   isAgent: boolean | null;
   comments: string | null;
+  phoneNumber?: string | null;
+  pbxCallId?: string | null;
+  isPbxOriginated?: boolean | null;
+  pbxDataReceivedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   inProgress: boolean;
@@ -123,4 +127,27 @@ export interface ApiError {
   message: string;
   status: number;
   timestamp: string;
+}
+
+// PBX Integration Types
+export interface PbxCallRequest {
+  phoneNumber: string;
+  callDuration: number;
+  callOwnerExtension: string;
+  callOwnerEmail?: string;
+  callDirection: 'INBOUND' | 'OUTBOUND';
+  callGroupId?: string;
+  timestamp: string;
+  pbxCallId: string;
+}
+
+export interface CallGroupAlert {
+  id: string;
+  callGroupId: string;
+  callGroupName: string;
+  alertType: string;
+  alertMessage: string;
+  isActive: boolean;
+  createdAt: string;
+  resolvedAt: string | null;
 }

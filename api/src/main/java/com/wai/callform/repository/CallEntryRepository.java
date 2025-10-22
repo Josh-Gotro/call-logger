@@ -101,4 +101,23 @@ public interface CallEntryRepository extends JpaRepository<CallEntry, UUID> {
     @Query("SELECT DISTINCT c.datatechEmail FROM CallEntry c ORDER BY c.datatechEmail")
     List<String> findDistinctDatatechEmails();
 
+    // PBX integration queries
+
+    // Find call by PBX call ID
+    Optional<CallEntry> findByPbxCallId(String pbxCallId);
+
+    // Find all PBX-originated calls that are pending completion (no task assigned)
+    List<CallEntry> findByIsPbxOriginatedTrueAndTaskIsNull();
+
+    // Find pending PBX calls for a specific user
+    List<CallEntry> findByDatatechEmailAndIsPbxOriginatedTrueAndTaskIsNull(String datatechEmail);
+
+    // Find all PBX-originated calls
+    List<CallEntry> findByIsPbxOriginatedTrueOrderByPbxDataReceivedAtDesc();
+
+    // Find PBX calls within date range
+    @Query("SELECT c FROM CallEntry c WHERE c.isPbxOriginated = true AND c.pbxDataReceivedAt BETWEEN :startDate AND :endDate ORDER BY c.pbxDataReceivedAt DESC")
+    List<CallEntry> findPbxCallsByDateRange(@Param("startDate") OffsetDateTime startDate,
+                                           @Param("endDate") OffsetDateTime endDate);
+
 }
