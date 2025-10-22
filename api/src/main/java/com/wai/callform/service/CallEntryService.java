@@ -273,6 +273,13 @@ public class CallEntryService {
         dto.setTaskSubjectDisplay(entity.getTaskSubjectDisplay());
         dto.setIsAgent(entity.getIsAgent());
         dto.setComments(entity.getComments());
+
+        // PBX integration fields
+        dto.setPhoneNumber(entity.getPhoneNumber());
+        dto.setPbxCallId(entity.getPbxCallId());
+        dto.setIsPbxOriginated(entity.getIsPbxOriginated());
+        dto.setPbxDataReceivedAt(entity.getPbxDataReceivedAt());
+
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
 

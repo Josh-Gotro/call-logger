@@ -1,0 +1,52 @@
+# 3CX Integration Configuration
+3cx:
+  integration_method: cdr_polling  # Options: cdr_polling | webhook | callflow
+  cdr_database:
+    host: ${CDR_DB_HOST:-localhost}
+    port: ${CDR_DB_PORT:-1433}
+    database: ${CDR_DB_NAME:-3CX_CDR}
+    username: ${CDR_DB_USER}
+    password: ${CDR_DB_PASSWORD}
+  polling_interval_seconds: ${POLLING_INTERVAL_SECONDS:-30}
+
+api:
+  base_url: ${API_BASE_URL:-http://localhost:8080/api}
+  timeout_seconds: ${API_TIMEOUT_MS:-10000}
+  retry_attempts: ${API_RETRY_ATTEMPTS:-3}
+
+business_hours:
+  timezone: ${TIMEZONE:-America/Anchorage}
+  monday:
+    start: "08:00"
+    end: "17:00"
+  tuesday:
+    start: "08:00"
+    end: "17:00"
+  wednesday:
+    start: "08:00"
+    end: "17:00"
+  thursday:
+    start: "08:00"
+    end: "17:00"
+  friday:
+    start: "08:00"
+    end: "17:00"
+  saturday: null
+  sunday: null
+
+call_groups:
+  alert_check_interval_minutes: ${ALERT_CHECK_INTERVAL_MINUTES:-5}
+  monitored_groups:
+    - id: "100"
+      name: "Support Team"
+    - id: "200"
+      name: "Sales Team"
+
+extension_mapping:
+  # Extension number -> DataTech email mapping
+  # Example:
+  # 101: john.doe@wostmann.com
+  # 102: jane.smith@wostmann.com
+  101: user1@wostmann.com
+  102: user2@wostmann.com
+  103: user3@wostmann.com

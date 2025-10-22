@@ -65,6 +65,22 @@ public class CallEntry {
     @Column(name = "comments", columnDefinition = "TEXT")
     private String comments;
 
+    // PBX integration fields
+    @Size(max = 50)
+    @Column(name = "phone_number", length = 50)
+    private String phoneNumber;
+
+    @Size(max = 100)
+    @Column(name = "pbx_call_id", length = 100)
+    private String pbxCallId;
+
+    @NotNull
+    @Column(name = "is_pbx_originated", nullable = false)
+    private Boolean isPbxOriginated = false;
+
+    @Column(name = "pbx_data_received_at")
+    private OffsetDateTime pbxDataReceivedAt;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

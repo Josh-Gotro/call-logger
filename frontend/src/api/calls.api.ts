@@ -4,6 +4,8 @@ import {
   StartCallRequest,
   UpdateCallRequest,
   PaginatedResponse,
+  PbxCallRequest,
+  CallGroupAlert,
 } from '../types/api.types';
 
 // Call Management API Functions
@@ -81,4 +83,36 @@ export const callsApi = {
   // Get all unique user emails
   getAllUsers: (): Promise<string[]> =>
     apiClient.get('/calls/users').then(extractData),
+
+  // PBX Integration endpoints
+
+  // Submit PBX call data (used by 3CX integration)
+  createCallFromPbx: (request: PbxCallRequest): Promise<CallEntry> =>
+    apiClient.post('/calls/from-pbx', request).then(extractData),
+
+  // Get pending PBX calls (all users)
+  getPendingPbxCalls: (): Promise<CallEntry[]> =>
+    apiClient.get('/calls/pending-pbx').then(extractData),
+
+  // Get pending PBX calls for specific user
+  getPendingPbxCallsForUser: (userEmail: string): Promise<CallEntry[]> =>
+    apiClient.get(`/calls/user/${userEmail}/pending-pbx`).then(extractData),
+
+  // Call Group Alerts
+
+  // Create/submit call group alert
+  createCallGroupAlert: (alert: Omit<CallGroupAlert, 'id' | 'createdAt' | 'resolvedAt' | 'isActive'>): Promise<CallGroupAlert> =>
+    apiClient.post('/alerts/call-groups', alert).then(extractData),
+
+  // Get active call group alerts
+  getActiveCallGroupAlerts: (): Promise<CallGroupAlert[]> =>
+    apiClient.get('/alerts/call-groups', { params: { active: true } }).then(extractData),
+
+  // Get alerts for a specific call group
+  getAlertsForCallGroup: (callGroupId: string): Promise<CallGroupAlert[]> =>
+    apiClient.get(`/alerts/call-groups/${callGroupId}`).then(extractData),
+
+  // Resolve a call group alert
+  resolveCallGroupAlert: (alertId: string): Promise<CallGroupAlert> =>
+    apiClient.put(`/alerts/call-groups/${alertId}/resolve`).then(extractData),
 };
